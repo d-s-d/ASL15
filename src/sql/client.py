@@ -5,8 +5,15 @@ class Client(object):
     self.cur.execute("SELECT * FROM register_client()")
     self.client_id = self.cur.fetchone()[0]
 
-  def queue_message(queue, content=None, receiver=None):
-    return queue.queue_message(content, self.client_id, receiver)
+  def send_message(queue, content=None, receiver=None):
+    return queue.send_message(content, self, receiver)
 
-  def dequeue_message(queue=None):
-    pass
+  def pop(queue, sender=None):
+    return queue.pop(self, sender)
+  
+  def peek():
+    return queue.peek(self, sender)
+
+  def remove():
+    self.cur.execute("SELECT * FROM remove_client(%s)", (self.client_id, ))
+    return self.cur.fetchone()[0]
