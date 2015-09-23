@@ -8,7 +8,7 @@ CREATE TABLE queues (q serial primary key);
 CREATE TABLE messages (
 	m bigserial primary key,
 	q int REFERENCES queues (q) ON DELETE CASCADE,
-	s int REFERENCES clients (c) ON DELETE CASCADE,
+	s int REFERENCES clients (c) ON DELETE CASCADE CHECK (s>0) ,
 	r int REFERENCES clients (c) ON DELETE CASCADE,
 	t text);
 
@@ -131,7 +131,6 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION send_message(int, int, int, text);
 CREATE OR REPLACE FUNCTION send_message(__q int, __s int, __r int, __content text) RETURNS setof messages LANGUAGE plpgsql AS
 $$
 BEGIN
