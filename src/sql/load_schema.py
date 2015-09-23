@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 
 import os, sys
-
-config = {
-  'username': 'asl15_mw',
-  'dbname': 'asl15',
-  'password': 'asl15_mw',
-  'hostname': 'localhost',
-  'file': 'schema.sql',
-}
+from config import config
 
 exec_pre = 'PGPASSWORD={password} psql -h {hostname} {dbname} {username}'
 exec_farg = ' --file={file}'

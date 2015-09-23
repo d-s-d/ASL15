@@ -130,3 +130,11 @@ BEGIN
 	RETURN QUERY EXECUTE 'SELECT * FROM clients';
 END;
 $$;
+
+DROP FUNCTION send_message(int, int, int, text);
+CREATE OR REPLACE FUNCTION send_message(__q int, __s int, __r int, __content text) RETURNS setof messages LANGUAGE plpgsql AS
+$$
+BEGIN
+  RETURN QUERY EXECUTE 'INSERT INTO messages VALUES (default, $1, $2, $3, $4) RETURNING *' USING __q, __s, __r, __content;
+END;
+$$;
