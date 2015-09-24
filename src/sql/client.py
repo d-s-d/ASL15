@@ -1,8 +1,11 @@
 
 class Client(object):
-  def __init__(self, conn):
+  def __init__(self, conn, name=None):
     self.cur = conn.cursor()
-    self.cur.execute("SELECT * FROM register_client()")
+    if name is None:
+      self.cur.execute("SELECT * FROM register_client(null)")
+    else:
+      self.cur.execute("SELECT * FROM register_client(%s)", name)
     self.client_id = self.cur.fetchone()[0]
 
   def send_message(self, queue, content=None, receiver=None):
