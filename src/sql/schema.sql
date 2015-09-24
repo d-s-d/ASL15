@@ -2,8 +2,14 @@ DROP TABLE messages CASCADE;
 DROP TABLE clients CASCADE;
 DROP TABLE queues CASCADE;
 
-CREATE TABLE clients (c serial primary key);
-CREATE TABLE queues (q serial primary key);
+CREATE TABLE clients (
+  c serial primary key,
+  name text UNIQUE
+);
+CREATE TABLE queues (
+  q serial primary key,
+  name text UNIQUE
+);
 
 CREATE TABLE messages (
 	m bigserial primary key,
@@ -89,10 +95,21 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION register_client() RETURNS setof clients LANGUAGE plpgsql AS
+CREATE OR REPLACE FUNCTION register_client(__name text) RETURNS setof clients LANGUAGE plpgsql AS
 $$
+DECLARE
+  _client clients;
 BEGIN
-	RETURN QUERY EXECUTE 'INSERT INTO clients VALUES (default) RETURNING *';
+  SELECT INTO _client * FROM clients WHERE name=__name;
+  IF FOUND THEN
+    RETURN NEXT _client;
+  ELSE
+    IF __name IS NULL THEN
+      RETURN QUERY EXECUTE 'INSERT INTO clients VALUES (default, $1) RETURNING *' USING now()::text;
+    ELSE
+      RETURN QUERY EXECUTE 'INSERT INTO clients VALUES (default, $1) RETURNING *' USING __name;
+    END IF;
+  END IF;
 END;
 $$;
 
@@ -103,11 +120,36 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION create_queue() RETURNS setof queues LANGUAGE plpgsql AS
+CREATE OR REPLACE FUNCTION get_client(name text) RETURNS setof clients LANGUAGE plpgsql AS
 $$
 BEGIN
-	RETURN QUERY EXECUTE 'INSERT INTO queues VALUES (default) RETURNING *';
+  RETURN QUERY EXECUTE 'SELECT * FROM clients WHERE name=$1' USING name;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION create_queue(__name text) RETURNS setof queues LANGUAGE plpgsql AS
+$$
+DECLARE
+  _queue queues;
+BEGIN
+  SELECT INTO _queue * FROM queues WHERE name=__name;
+  IF FOUND THEN
+    RETURN NEXT _queue;
+  ELSE
+    IF __name IS NULL THEN
+      RETURN QUERY EXECUTE 'INSERT INTO queues VALUES (default, $1) RETURNING *' USING now()::text;
+    ELSE
+      RETURN QUERY EXECUTE 'INSERT INTO queues VALUES (default, $1) RETURNING *' USING __name;
+    END IF;
+  END IF;
 END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_queue(name text) RETURNS setof queues LANGUAGE plpgsql AS
+$$
+BEGIN
+  RETURN QUERY EXECUTE 'SELECT * FROM queues WHERE name=$1' USING name;
+END
 $$;
 
 CREATE OR REPLACE FUNCTION remove_queue(__q int) RETURNS setof queues LANGUAGE plpgsql AS
