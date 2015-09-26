@@ -1,0 +1,52 @@
+<project name="ASL15" default="run" basedir=".">
+
+  <!-- set global properties for this build -->
+  <property name="src.dir"    location="src"/>
+  <property name="build.dir"  location="bin"/>
+  <property name="lib.dir"    location="lib"/>
+  <property name="middleware-main-class" value="ch.ethz.inf.stefand.MiddlewareMain"/>
+  <property name="client-main-class" value="ch.ethz.inf.stefand.ClientMain"/>
+  <path id="classpath">
+    <fileset dir="${lib.dir}" includes="postgresql-9.4-1203.jdbc4.jar"/>
+  </path>
+
+  <target name="compile" description="compiles the source">
+    <!-- Compile the java code from ${src} into ${build} -->
+    <mkdir dir="${build.dir}"/>
+    <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="classpath" includeantruntime="false" />
+  </target>
+
+  <target name="jar" depends="compile" description="generate a jar executable" >
+    <!-- Put everything in into a executable jar file -->
+    <jar jarfile="${ant.project.name}.jar" basedir="${build.dir}" />
+  </target>
+
+  <target name="run-middleware" depends="jar" description="execute the middleware" >
+    <java classname="${middleware-main-class}" fork="true">
+      <classpath>
+        <path refid="classpath"/>
+        <path location="${ant.project.name}.jar"/>
+      </classpath>
+      <arg value="${user}"/>
+      <arg value="${password}"/>
+    </java>
+  </target>
+
+  <target name="run-client" depends="jar" description="execute the client" >
+    <java classname="${client-main-class}" fork="true">
+      <classpath>
+        <path refid="classpath"/>
+        <path location="${ant.project.name}.jar"/>
+      </classpath>
+      <arg value="${user}"/>
+      <arg value="${password}"/>
+    </java>
+  </target>
+
+  <target name="clean" description="clean up" >
+    <!-- Delete the ${build} directory and the jar file -->
+    <delete dir="${build.dir}"/>
+    <delete file="${ant.project.name}.jar"/>
+  </target>
+
+</project>
