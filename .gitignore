@@ -53,3 +53,11 @@ Session.vim
 .netrwhist
 *~
 
+# Project specific
+*.jar
+bin/*
+
+# Python
+**/__pycache__/*
+
+

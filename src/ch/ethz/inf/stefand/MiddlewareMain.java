@@ -11,6 +11,15 @@ import java.sql.Statement;
 public class MiddlewareMain {
 
     public static void main(String[] args) {
+        if(args.length > 0) {
+            int portNumber = Integer.parseInt(args[0]);
+            ClientDispatcher clientDispatcher = new ClientDispatcher(portNumber);
+            clientDispatcher.run();
+        } else {
+            System.out.println("you must provide at least the portnumber.");
+        }
+        System.out.println("This is the middleware.");
+        /*
         Connection conn = null;
         Statement stmt = null;
         ResultSet rs = null;
@@ -38,6 +47,6 @@ public class MiddlewareMain {
             } catch (SQLException e) {
                 System.out.println("Caught exception while closing resources: " + e.getMessage());
             }
-        }
+        }*/
     }
 }

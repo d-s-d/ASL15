@@ -1,11 +1,12 @@
-<project name="ASL15" default="run" basedir=".">
+<project name="ASL15" default="run-middleware" basedir=".">
 
   <!-- set global properties for this build -->
   <property name="src.dir"    location="src"/>
   <property name="build.dir"  location="bin"/>
   <property name="lib.dir"    location="lib"/>
-  <property name="middleware-main-class" value="ch.ethz.inf.stefand.MiddlewareMain"/>
-  <property name="client-main-class" value="ch.ethz.inf.stefand.ClientMain"/>
+  <property name="res.dir"    location="res"/>
+  <property name="middleware-main-class" value="ch.ethz.inf.stefand.MiddlewareMain" />
+  <property name="client-main-class" value="ch.ethz.inf.stefand.ClientMain" />
   <path id="classpath">
     <fileset dir="${lib.dir}" includes="postgresql-9.4-1203.jdbc4.jar"/>
   </path>
@@ -18,7 +19,9 @@
 
   <target name="jar" depends="compile" description="generate a jar executable" >
     <!-- Put everything in into a executable jar file -->
-    <jar jarfile="${ant.project.name}.jar" basedir="${build.dir}" />
+    <jar jarfile="${ant.project.name}.jar" basedir="${build.dir}">
+      <fileset dir="${res.dir}" />
+    </jar>
   </target>
 
   <target name="run-middleware" depends="jar" description="execute the middleware" >
@@ -27,21 +30,35 @@
         <path refid="classpath"/>
         <path location="${ant.project.name}.jar"/>
       </classpath>
-      <arg value="${user}"/>
-      <arg value="${password}"/>
+      <arg value="${portnumber}" />
     </java>
   </target>
 
   <target name="run-client" depends="jar" description="execute the client" >
-    <java classname="${client-main-class}" fork="true">
-      <classpath>
-        <path refid="classpath"/>
-        <path location="${ant.project.name}.jar"/>
-      </classpath>
-      <arg value="${user}"/>
-      <arg value="${password}"/>
-    </java>
+      <sleep seconds="1"/>
+      <java classname="${client-main-class}" fork="true">
+        <classpath>
+          <path refid="classpath"/>
+          <path location="${ant.project.name}.jar"/>
+        </classpath>
+        <arg value="${hostname}" />
+        <arg value="${portnumber}" />
+        <arg value="${cli-args}" />
+      </java>
   </target>
+
+    <target name="run-pingtest" depends="jar" description="run a client/middleware where client pings middleware">
+        <parallel>
+            <antcall target="run-middleware">
+              <param name="portnumber" value="9999" />
+            </antcall>
+            <antcall target="run-client">
+                <param name="hostname" value="localhost" />
+                <param name="portnumber" value="9999" />
+                <param name="cli-args" value="SimplePingClient" />
+            </antcall>
+        </parallel>
+    </target>
 
   <target name="clean" description="clean up" >
     <!-- Delete the ${build} directory and the jar file -->
