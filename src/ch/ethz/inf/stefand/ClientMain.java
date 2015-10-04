@@ -2,6 +2,7 @@ package ch.ethz.inf.stefand;
 
 import ch.ethz.inf.stefand.clients.SimplePingClient;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,7 +24,8 @@ public class ClientMain {
             Class clientClass = CLIENT_CLASSES.get(CLASS_NAME_PREFIX+clientClassName);
             try {
                 AbstractClient clientInstance = (AbstractClient) clientClass.newInstance();
-                clientInstance.initialize("someName", args[0], Integer.parseInt(args[1]));
+                clientInstance.initialize("someName", args[0], Integer.parseInt(args[1]),
+                        Arrays.copyOfRange(args, 3, args.length));
                 clientInstance.start();
             } catch (InstantiationException e) {
                 e.printStackTrace();

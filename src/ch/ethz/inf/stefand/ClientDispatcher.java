@@ -15,21 +15,26 @@ import ch.ethz.inf.stefand.protocol.*;
  */
 public class ClientDispatcher {
     protected int portNumber;
-    protected CommandDispatcher commandDispatcher;
 
     public ClientDispatcher(int portNumber) {
         this.portNumber = portNumber;
-        this.commandDispatcher = new CommandDispatcher();
     }
 
     public void run() {
+        ServerSocket serverSocket = null;
         try {
-            ServerSocket serverSocket = new ServerSocket(this.portNumber);
-            Socket client = serverSocket.accept();
-            RequestContext reqContext = new RequestContext(client, this.commandDispatcher);
-            reqContext.run();
-        } catch(IOException e) {
+            serverSocket = new ServerSocket(this.portNumber);
+        } catch (IOException e) {
             e.printStackTrace();
+        }
+        while(true) {
+            try {
+                Socket client = serverSocket.accept();
+                RequestContext reqContext = new RequestContext(client);
+                reqContext.run();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

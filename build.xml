@@ -44,6 +44,7 @@
         <arg value="${hostname}" />
         <arg value="${portnumber}" />
         <arg value="${cli-args}" />
+        <arg value="20" />
       </java>
   </target>
 

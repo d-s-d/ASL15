@@ -1,6 +1,7 @@
 package ch.ethz.inf.stefand.protocol;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
@@ -8,14 +9,11 @@ import java.net.Socket;
  * Created by dsd on 10/2/15.
  */
 public class RequestContext implements Runnable {
-    protected CommandExecutor commandExecutor;
     protected Object command;
     protected Socket socket;
-    protected CommandDispatcher commandDispatcher;
 
-    public RequestContext(Socket socket, CommandDispatcher commandDispatcher /* sql connection */) {
+    public RequestContext(Socket socket /*, sql connection */) {
         this.socket = socket;
-        this.commandDispatcher = commandDispatcher;
     }
 
     @Override
@@ -24,18 +22,25 @@ public class RequestContext implements Runnable {
         try {
             objectOutputStream = new ObjectOutputStream(this.socket.getOutputStream());
             try {
-                Object response = this.commandDispatcher.dispatchCommand(this).execute(this);
+                ObjectInputStream objectInputStream = new ObjectInputStream(this.socket.getInputStream());
+                Object response = ((Command) objectInputStream.readObject()).execute(this);
                 objectOutputStream.writeObject(response);
                 objectOutputStream.flush();
-                objectOutputStream.close();
             } catch (RuntimeException rt) {
                 objectOutputStream.writeObject(rt);
+            } catch (ClassNotFoundException e) {
+                objectOutputStream.writeObject(e);
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             // TODO: log
             this.socket.close();
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
+        } catch(ClassCastException e) {
+            e.printStackTrace();
+        } finally{
             if (objectOutputStream != null) {
                 try {
                     objectOutputStream.close();
@@ -53,16 +58,8 @@ public class RequestContext implements Runnable {
         }
     }
 
-    public CommandExecutor getCommandExecutor() {
-        return commandExecutor;
-    }
-
     public Object getCommand() {
         return command;
-    }
-
-    public void setCommandExecutor(CommandExecutor commandExecutor) {
-        this.commandExecutor = commandExecutor;
     }
 
     public void setCommand(Object command) {
@@ -77,11 +74,4 @@ public class RequestContext implements Runnable {
         this.socket = socket;
     }
 
-    public CommandDispatcher getCommandDispatcher() {
-        return commandDispatcher;
-    }
-
-    public void setCommandDispatcher(CommandDispatcher commandDispatcher) {
-        this.commandDispatcher = commandDispatcher;
-    }
 }
