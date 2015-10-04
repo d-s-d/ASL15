@@ -6,6 +6,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import ch.ethz.inf.stefand.AbstractClient;
+import ch.ethz.inf.stefand.protocol.PingCommand;
+import ch.ethz.inf.stefand.protocol.PongResponse;
 import ch.ethz.inf.stefand.protocol.RequestHeader;
 import ch.ethz.inf.stefand.protocol.ResponseHeader;
 
@@ -21,26 +23,25 @@ public class SimplePingClient extends AbstractClient {
     @Override
     public void start() {
         Socket socket = null;
-        RequestHeader reqHeader = null;
         ObjectOutputStream protoOutStream = null;
         ObjectInputStream protoInStream = null;
         try {
             socket = new Socket(this.middlewareHostname, this.middlewarePortNumber);
-            reqHeader = new RequestHeader(RequestHeader.REQUEST_TYPE_PING);
             protoOutStream = new ObjectOutputStream(socket.getOutputStream());
-            protoOutStream.writeObject(reqHeader);
-            protoOutStream.writeObject(String.format("%d", System.currentTimeMillis()));
+            PingCommand pingCommand = new PingCommand();
+            pingCommand.payload = String.format("%d", System.currentTimeMillis());
+            protoOutStream.writeObject(pingCommand);
             protoOutStream.flush();
             // socket.getOutputStream().flush();
             try {
                 protoInStream = new ObjectInputStream(socket.getInputStream());
-                final ResponseHeader respHeader = (ResponseHeader) protoInStream.readObject();
-                if( respHeader.errorState == ResponseHeader.ERROR_STATE_SUCCESS ) {
-                    final String ts = (String) protoInStream.readObject();
-                    final long delta = System.currentTimeMillis() - Long.parseLong(ts);
-                    System.out.println(String.format("Successful ping, round trip time: %d ms", delta));
+                final Object respObject = protoInStream.readObject();
+                if(respObject instanceof RuntimeException) {
+                    ((RuntimeException) respObject).printStackTrace();
                 } else {
-                    System.out.println("Received general error. :-(");
+                    final PongResponse pongResponse = (PongResponse) respObject;
+                    final long delta = System.currentTimeMillis() - Long.parseLong(pongResponse.payload);
+                    System.out.println(String.format("Successful ping, round trip time: %d ms", delta));
                 }
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
