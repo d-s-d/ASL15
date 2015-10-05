@@ -36,6 +36,10 @@
 
   <target name="run-client" depends="jar" description="execute the client" >
       <sleep seconds="1"/>
+      <condition property="pingcount" value="${pingcount}" else="1">
+        <isset property="pingcount" />
+      </condition>
+      <echo message="ping count ${pingcount}" />
       <java classname="${client-main-class}" fork="true">
         <classpath>
           <path refid="classpath"/>
@@ -43,8 +47,8 @@
         </classpath>
         <arg value="${hostname}" />
         <arg value="${portnumber}" />
-        <arg value="${cli-args}" />
-        <arg value="20" />
+        <arg value="${client-name}" />
+        <arg value="${pingcount}" />
       </java>
   </target>
 
@@ -56,7 +60,7 @@
             <antcall target="run-client">
                 <param name="hostname" value="localhost" />
                 <param name="portnumber" value="9999" />
-                <param name="cli-args" value="SimplePingClient" />
+                <param name="client-name" value="SimplePingClient" />
             </antcall>
         </parallel>
     </target>

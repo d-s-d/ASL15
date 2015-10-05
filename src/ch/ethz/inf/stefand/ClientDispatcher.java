@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 
 import ch.ethz.inf.stefand.protocol.*;
 
@@ -15,9 +16,13 @@ import ch.ethz.inf.stefand.protocol.*;
  */
 public class ClientDispatcher {
     protected int portNumber;
+    protected ExecutorService threadPool;
+    protected ConnectionPool connectionPool;
 
-    public ClientDispatcher(int portNumber) {
+    public ClientDispatcher(int portNumber, ExecutorService threadPool, ConnectionPool connectionPool) {
         this.portNumber = portNumber;
+        this.threadPool = threadPool;
+        this.connectionPool = connectionPool;
     }
 
     public void run() {
@@ -27,11 +32,12 @@ public class ClientDispatcher {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         while(true) {
             try {
                 Socket client = serverSocket.accept();
-                RequestContext reqContext = new RequestContext(client);
-                reqContext.run();
+                RequestContext reqContext = new RequestContext(client, connectionPool);
+                threadPool.submit(reqContext);
             } catch (IOException e) {
                 e.printStackTrace();
             }

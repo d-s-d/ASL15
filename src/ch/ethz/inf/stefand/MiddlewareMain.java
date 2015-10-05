@@ -7,14 +7,23 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.Executors;
 
 public class MiddlewareMain {
 
     public static void main(String[] args) {
         if(args.length > 0) {
             int portNumber = Integer.parseInt(args[0]);
-            ClientDispatcher clientDispatcher = new ClientDispatcher(portNumber);
-            clientDispatcher.run();
+            ClientDispatcher clientDispatcher;
+            int poolSize = 5;
+            try {
+                clientDispatcher = new ClientDispatcher(
+                        portNumber, Executors.newFixedThreadPool(poolSize), new ConnectionPool(Config.DBURL,
+                        Config.DBUSERNAME, Config.DBPASSWORD, poolSize));
+                clientDispatcher.run();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         } else {
             System.out.println("you must provide at least the portnumber.");
         }

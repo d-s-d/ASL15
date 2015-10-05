@@ -1,5 +1,7 @@
 package ch.ethz.inf.stefand.protocol;
 
+import ch.ethz.inf.stefand.ConnectionPool;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -11,19 +13,24 @@ import java.net.Socket;
 public class RequestContext implements Runnable {
     protected Object command;
     protected Socket socket;
+    protected ConnectionPool connectionPool;
 
-    public RequestContext(Socket socket /*, sql connection */) {
+    public RequestContext(Socket socket, ConnectionPool connectionPool) {
         this.socket = socket;
+        this.connectionPool = connectionPool;
     }
 
     @Override
     public void run() {
         ObjectOutputStream objectOutputStream = null;
+        ObjectInputStream objectInputStream = null;
         try {
             objectOutputStream = new ObjectOutputStream(this.socket.getOutputStream());
             try {
-                ObjectInputStream objectInputStream = new ObjectInputStream(this.socket.getInputStream());
+                objectInputStream = new ObjectInputStream(this.socket.getInputStream());
+
                 Object response = ((Command) objectInputStream.readObject()).execute(this);
+
                 objectOutputStream.writeObject(response);
                 objectOutputStream.flush();
             } catch (RuntimeException rt) {
@@ -33,6 +40,8 @@ public class RequestContext implements Runnable {
                 e.printStackTrace();
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                objectInputStream.close();
             }
             // TODO: log
             this.socket.close();
@@ -40,7 +49,7 @@ public class RequestContext implements Runnable {
             e.printStackTrace();
         } catch(ClassCastException e) {
             e.printStackTrace();
-        } finally{
+        } finally {
             if (objectOutputStream != null) {
                 try {
                     objectOutputStream.close();
