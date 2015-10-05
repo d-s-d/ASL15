@@ -36,10 +36,25 @@
 
   <target name="run-client" depends="jar" description="execute the client" >
       <sleep seconds="1"/>
-      <condition property="pingcount" value="${pingcount}" else="1">
-        <isset property="pingcount" />
+      <fail>
+        <condition>
+          <not>
+            <isset property="client-name" />
+          </not>
+        </condition>
+      </fail>
+      <condition property="arg0" value="${arg0}" else="1">
+        <isset property="arg0" />
       </condition>
-      <echo message="ping count ${pingcount}" />
+      <condition property="arg1" value="${arg1}" else="1">
+          <isset property="arg1" />
+      </condition>
+      <condition property="arg2" value="${arg2}" else="1">
+          <isset property="arg2" />
+      </condition>
+      <condition property="arg3" value="${arg3}" else="1">
+          <isset property="arg3" />
+      </condition>
       <java classname="${client-main-class}" fork="true">
         <classpath>
           <path refid="classpath"/>
@@ -48,11 +63,21 @@
         <arg value="${hostname}" />
         <arg value="${portnumber}" />
         <arg value="${client-name}" />
-        <arg value="${pingcount}" />
+        <arg value="${arg0}" />
+          <arg value="${arg1}" />
+          <arg value="${arg2}" />
+          <arg value="${arg3}" />
       </java>
   </target>
 
-    <target name="run-pingtest" depends="jar" description="run a client/middleware where client pings middleware">
+    <target name="run-pair" depends="jar" description="run a client/middleware pair">
+      <fail>
+        <condition>
+          <not>
+            <isset property="client-name" />
+          </not>
+        </condition>
+      </fail>
         <parallel>
             <antcall target="run-middleware">
               <param name="portnumber" value="9999" />
@@ -60,7 +85,6 @@
             <antcall target="run-client">
                 <param name="hostname" value="localhost" />
                 <param name="portnumber" value="9999" />
-                <param name="client-name" value="SimplePingClient" />
             </antcall>
         </parallel>
     </target>

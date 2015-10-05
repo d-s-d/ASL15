@@ -34,4 +34,9 @@ public class RegisterClientDBCommand extends DBCommand implements Serializable {
     protected void prepareStatement(PreparedStatement stmt) throws SQLException {
         stmt.setString(1, clientName);
     }
+
+    @Override
+    public Class responseType() {
+        return Integer.class;
+    }
 }

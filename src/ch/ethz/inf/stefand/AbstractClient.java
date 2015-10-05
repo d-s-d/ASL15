@@ -25,7 +25,7 @@ public abstract class AbstractClient {
 
     public abstract void start();
 
-    protected Object sendCommand(Command command) throws IOException, ClassNotFoundException {
+    protected Object sendCommand(Command command) throws IOException, ClassNotFoundException, UnexpectedResponseTypeException, RemoteException {
         Socket socket = null;
         ObjectInputStream responseStream = null;
         ObjectOutputStream commandStream = null;
@@ -43,6 +43,12 @@ public abstract class AbstractClient {
             if(commandStream != null) commandStream.close();
             if(responseStream != null) responseStream.close();
             if(socket != null) socket.close();
+        }
+        if(response instanceof Exception) {
+            throw new RemoteException((Exception) response);
+        }
+        if(!command.responseType().isAssignableFrom(response.getClass())) {
+            throw new UnexpectedResponseTypeException(command, response);
         }
         return response;
     }

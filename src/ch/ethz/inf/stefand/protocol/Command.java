@@ -5,4 +5,5 @@ package ch.ethz.inf.stefand.protocol;
  */
 public interface Command {
     Object execute(RequestContext requestContext) throws Exception;
+    Class responseType();
 }

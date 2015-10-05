@@ -18,4 +18,9 @@ public class PingCommand implements Command, Serializable {
         pongResponse.payload = this.payload;
         return pongResponse;
     }
+
+    @Override
+    public Class responseType() {
+        return PongResponse.class;
+    }
 }
