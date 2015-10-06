@@ -1,23 +1,20 @@
 package ch.ethz.inf.stefand.protocol;
 
-import org.omg.CORBA.INTERNAL;
-
 import java.io.Serializable;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Created by dsd on 10/5/15.
+ * Created by dsd on 10/6/15.
  */
-public class RemoveClientDBCommand extends DBCommand implements Serializable {
-    public static String SQL = "SELECT * from remove_client(?)";
+public class CreateQueueDBCommand extends DBCommand implements Serializable {
+    public static String SQL = "SELECT * from create_queue(?)";
 
-    public int clientId;
+    public String queueName;
 
-    public RemoveClientDBCommand(int clientId) {
-        this.clientId = clientId;
+    public CreateQueueDBCommand(String queueName) {
+        this.queueName = queueName;
     }
 
     @Override
@@ -32,7 +29,7 @@ public class RemoveClientDBCommand extends DBCommand implements Serializable {
 
     @Override
     protected void prepareStatement(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(1, this.clientId);
+        stmt.setString(1, this.queueName);
     }
 
     @Override

@@ -35,6 +35,8 @@ public class RequestContext implements Runnable {
                 objectOutputStream.flush();
             } catch (RuntimeException rt) {
                 objectOutputStream.writeObject(rt);
+            } catch (EmptyResultException e) {
+                objectOutputStream.writeObject(e);
             } catch (ClassNotFoundException e) {
                 objectOutputStream.writeObject(e);
                 e.printStackTrace();

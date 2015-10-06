@@ -16,16 +16,18 @@ public abstract class AbstractClient {
     protected int middlewarePortNumber;
     protected String[] args;
 
-    public void initialize(String name, String middlewareHostname, int middlewarePortNumber, String[] args) {
+    public void initialize(String name, String middlewareHostname, int middlewarePortNumber, String[] args) throws ClassNotFoundException, UnexpectedResponseTypeException, RemoteException, IOException {
         this.name = name;
         this.middlewareHostname = middlewareHostname;
         this.middlewarePortNumber = middlewarePortNumber;
         this.args = args;
     }
 
-    public abstract void start();
+    public abstract void start()
+            throws ClassNotFoundException, UnexpectedResponseTypeException, RemoteException, IOException;
 
-    protected Object sendCommand(Command command) throws IOException, ClassNotFoundException, UnexpectedResponseTypeException, RemoteException {
+    protected Object sendCommand(Command command)
+            throws IOException, ClassNotFoundException, UnexpectedResponseTypeException, RemoteException {
         Socket socket = null;
         ObjectInputStream responseStream = null;
         ObjectOutputStream commandStream = null;

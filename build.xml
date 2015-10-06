@@ -9,6 +9,9 @@
   <property name="client-main-class" value="ch.ethz.inf.stefand.ClientMain" />
   <path id="classpath">
     <fileset dir="${lib.dir}" includes="postgresql-9.4-1203.jdbc4.jar"/>
+    <fileset dir="${lib.dir}" includes="log4j-api-2.4.jar" />
+    <fileset dir="${lib.dir}" includes="log4j-core-2.4.jar" />
+    <fileset dir="${res.dir}" includes="log4j2.xml" />
   </path>
 
   <target name="compile" description="compiles the source">
@@ -24,7 +27,16 @@
     </jar>
   </target>
 
-  <target name="run-middleware" depends="jar" description="execute the middleware" >
+  <target name="set-connection">
+      <condition property="portnumber" value="${portnumber}" else="9999">
+        <isset property="portnumber" />
+      </condition>
+      <condition property="hostname" value="${hostname}" else="localhost">
+        <isset property="hostname" />
+      </condition>
+  </target>
+
+  <target name="run-middleware" depends="jar, set-connection" description="execute the middleware" >
     <java classname="${middleware-main-class}" fork="true">
       <classpath>
         <path refid="classpath"/>
@@ -34,7 +46,7 @@
     </java>
   </target>
 
-  <target name="run-client" depends="jar" description="execute the client" >
+  <target name="run-client" depends="jar, set-connection" description="execute the client" >
       <sleep seconds="1"/>
       <fail>
         <condition>
@@ -43,16 +55,16 @@
           </not>
         </condition>
       </fail>
-      <condition property="arg0" value="${arg0}" else="1">
+      <condition property="arg0" value="${arg0}" else="">
         <isset property="arg0" />
       </condition>
-      <condition property="arg1" value="${arg1}" else="1">
+      <condition property="arg1" value="${arg1}" else="">
           <isset property="arg1" />
       </condition>
-      <condition property="arg2" value="${arg2}" else="1">
+      <condition property="arg2" value="${arg2}" else="">
           <isset property="arg2" />
       </condition>
-      <condition property="arg3" value="${arg3}" else="1">
+      <condition property="arg3" value="${arg3}" else="">
           <isset property="arg3" />
       </condition>
       <java classname="${client-main-class}" fork="true">

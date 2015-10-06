@@ -6,24 +6,27 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Created by dsd on 10/5/15.
+ * Created by dsd on 10/6/15.
  */
-public class PeekDBCommand extends DBCommand implements Serializable {
-    public static String SQL = "SELECT * FROM peek(?,?,?)";
+public class SendMessageDBCommand extends DBCommand implements Serializable {
+    public static String SQL = "SELECT * from send_message(?,?,?,?)";
 
     protected int queueId;
-    protected int receiverId;
     protected int senderId;
+    protected int receiverId;
+    protected String text;
 
-    public PeekDBCommand(int queueId, int receiverId, int senderId) {
+    public SendMessageDBCommand(int queueId, int senderId, int receiverId, String text) {
         this.queueId = queueId;
-        this.receiverId = receiverId;
         this.senderId = senderId;
+        this.receiverId = receiverId;
+        this.text = text;
     }
 
     @Override
     protected Object executeDBCommand(RequestContext requestContext, ResultSet rs) throws SQLException {
-        return new Message(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getString(5));
+        // return the global message identifier
+        return rs.getInt(1);
     }
 
     @Override
@@ -33,13 +36,14 @@ public class PeekDBCommand extends DBCommand implements Serializable {
 
     @Override
     protected void prepareStatement(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(1, receiverId);
-        stmt.setInt(2, queueId);
-        stmt.setInt(3, senderId);
+        stmt.setInt(1, queueId);
+        stmt.setInt(2, senderId);
+        stmt.setInt(3, receiverId);
+        stmt.setString(4, text);
     }
 
     @Override
     public Class responseType() {
-        return Message.class;
+        return Integer.class;
     }
 }

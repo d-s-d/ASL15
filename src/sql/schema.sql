@@ -77,14 +77,16 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION pop(__r int, __q int, __s int) RETURNS messages LANGUAGE plpgsql AS
+CREATE OR REPLACE FUNCTION pop(__r int, __q int, __s int) RETURNS setof messages LANGUAGE plpgsql AS
 $$
 DECLARE
 	rec messages;
 BEGIN
 	SELECT INTO rec * FROM peek(__r, __q, __s);
-	EXECUTE 'DELETE FROM messages WHERE m=$1' USING rec.m;
-	RETURN rec;
+  IF FOUND THEN
+	  EXECUTE 'DELETE FROM messages WHERE m=$1' USING rec.m;
+	  RETURN NEXT rec;
+  END IF;
 END;
 $$;
 

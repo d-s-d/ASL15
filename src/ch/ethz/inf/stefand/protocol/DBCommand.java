@@ -18,14 +18,15 @@ public abstract class DBCommand implements Command {
     public Object execute(RequestContext requestContext) throws Exception {
         ConnectionPool.PooledConnection pooledConnection = null;
         try {
-            Connection conn = requestContext.connectionPool.getConnection().getConnection();
+            pooledConnection = requestContext.connectionPool.getConnection();
+            Connection conn = pooledConnection.getConnection();
             PreparedStatement ps = conn.prepareStatement(getSQLStatement());
             prepareStatement(ps);
             ResultSet rs = ps.executeQuery();
-            Object result = this.executeDBCommand(requestContext, rs);
-            if(result == null)
-                return new EmptyResultException();
-            return result;
+            if(rs.next()) {
+                return this.executeDBCommand(requestContext, rs);
+            } else
+                return new EmptyResultException("Command Name: " + this.getClass().getName());
         } catch(SQLException e) {
             // TODO: Log
             return e;

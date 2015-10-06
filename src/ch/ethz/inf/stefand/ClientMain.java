@@ -3,6 +3,7 @@ package ch.ethz.inf.stefand;
 import ch.ethz.inf.stefand.clients.SimplePingClient;
 import ch.ethz.inf.stefand.clients.SimpleRegisterClient;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,7 +15,6 @@ public class ClientMain {
     public static String CLASS_NAME_PREFIX = "ch.ethz.inf.stefand.clients.";
 
     public static void main(String[] args) {
-        System.out.println(SimplePingClient.class.getName());
         if(args.length > 2) {
             String clientClassName = args[2];
             try {
@@ -28,6 +28,12 @@ public class ClientMain {
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (UnexpectedResponseTypeException e) {
+                e.printStackTrace();
+            } catch (RemoteException e) {
+                e.getException().printStackTrace();
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         } else {

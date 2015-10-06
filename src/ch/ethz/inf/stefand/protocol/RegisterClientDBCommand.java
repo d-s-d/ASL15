@@ -20,9 +20,7 @@ public class RegisterClientDBCommand extends DBCommand implements Serializable {
 
     @Override
     protected Object executeDBCommand(RequestContext requestContext, ResultSet rs) throws SQLException {
-        if(rs.next())
-            return rs.getInt(1);
-        return null;
+        return rs.getInt(1);
     }
 
     @Override

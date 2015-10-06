@@ -6,16 +6,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Created by dsd on 10/5/15.
+ * Created by dsd on 10/6/15.
  */
-public class PeekDBCommand extends DBCommand implements Serializable {
-    public static String SQL = "SELECT * FROM peek(?,?,?)";
+public class PopDBCommand extends DBCommand implements Serializable {
+    public static String SQL = "SELECT * FROM pop(?, ?, ?)";
 
     protected int queueId;
     protected int receiverId;
     protected int senderId;
 
-    public PeekDBCommand(int queueId, int receiverId, int senderId) {
+    public PopDBCommand(int queueId, int receiverId, int senderId) {
         this.queueId = queueId;
         this.receiverId = receiverId;
         this.senderId = senderId;
