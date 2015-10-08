@@ -11,8 +11,8 @@ public class MiddlewareMain {
     public static void main(String[] args) {
         if(args.length > 0) {
             int portNumber = Integer.parseInt(args[0]);
-            for(int i = 0; i < 1024; i++)
-                logger.trace("Middleware started.");
+            /*for(int i = 0; i < 1024; i++)
+                logger.trace("Middleware started."); */
             ClientDispatcher clientDispatcher;
             int poolSize = 5;
             try {

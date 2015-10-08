@@ -22,7 +22,15 @@ public abstract class DBCommand implements Command {
             Connection conn = pooledConnection.getConnection();
             PreparedStatement ps = conn.prepareStatement(getSQLStatement());
             prepareStatement(ps);
-            ResultSet rs = ps.executeQuery();
+            ResultSet rs = null;
+            while(rs == null) {
+                try {
+                    rs = ps.executeQuery();
+                } catch (SQLException sqlE) {
+                    if (!sqlE.getMessage().contains("could not serialize"))
+                        throw sqlE;
+                }
+            }
             if(rs.next()) {
                 return this.executeDBCommand(requestContext, rs);
             } else

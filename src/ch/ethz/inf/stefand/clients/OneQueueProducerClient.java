@@ -30,8 +30,9 @@ public class OneQueueProducerClient extends AbstractRegisteredClient {
         queueId = createQueue(queuName);
 
         for(int i = 0; i < msgCount; i++) {
-            int msgId = sendMessage(queueId, this.clientId, 0, Long.toString(System.currentTimeMillis()));
-            System.out.printf("delivered message (id: %d)\n", msgId);
+            long msgTag = System.currentTimeMillis();
+            int msgId = sendMessage(queueId, this.clientId, 0, Long.toString(msgTag));
+            System.out.printf("delivered message %d (id: %d)\n", msgTag, msgId);
         }
 
         //shutdown(); // shut down deletes all messages!
