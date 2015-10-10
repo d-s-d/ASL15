@@ -2,7 +2,7 @@
 <Configuration status="WARN">
     <Appenders>
         <RollingFile name="RollingFile" fileName="/tmp/Middleware.log"
-                     filePattern="/tmp/Middleware-%d{MM-dd-yyyy}-%i.log.gz">
+                     filePattern="/tmp/Middleware-%d{MM-dd-yyyy}-%i.log">
             <PatternLayout>
                 <Pattern>%d{HH:mm:ss.SSS} %logger{1} %-5level - %msg%n</Pattern>
             </PatternLayout>

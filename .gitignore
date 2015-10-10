@@ -58,6 +58,5 @@ Session.vim
 bin/*
 
 # Python
+*.pyc
 **/__pycache__/*
-
-
