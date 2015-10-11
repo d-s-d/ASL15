@@ -8,7 +8,10 @@ class Client(object):
     self.arg_str = arg_str
 
   def __repr__(self):
-    return "ClientType {0} with Arguments: {1}".format(self.client_type, self.arg_str)
+    hostname = ""
+    if hasattr(self, 'instance'):
+      hostname = self.instance.hostname
+    return "ClientType ({2}) {0} with Arguments: {1} ".format(self.client_type, self.arg_str, hostname)
 
 class Middleware(object):
   def __init__(self, identifier):
@@ -16,7 +19,11 @@ class Middleware(object):
     self.children = []
   
   def __repr__(self):
-    return "Middleware: {0} \n  {1}".format(self.identifier, '\n  '.join(map(lambda c: c.__repr__(), self.children)))
+    hostname = ""
+    if hasattr(self, 'instance'):
+      hostname = self.instance.hostname
+    return "Middleware: ({2}) {0} \n  {1} ".format(
+      self.identifier, '\n  '.join(map(lambda c: c.__repr__(), self.children)), hostname)
 
 class Experiment(object):
   def __init__(self, identifier):
@@ -24,7 +31,11 @@ class Experiment(object):
     self.children = []
 
   def __repr__(self):
-    return "Experiment: {0} \n {1}".format(self.identifier, '\n '.join(map(lambda c: c.__repr__(), self.children)))
+    hostname = ""
+    if hasattr(self, 'instance'):
+      hostname = self.instance.hostname
+    return "Experiment: ({2}) {0} \n {1} ".format(
+      self.identifier, '\n '.join(map(lambda c: c.__repr__(), self.children)), hostname)
 
   def run():
     pass
