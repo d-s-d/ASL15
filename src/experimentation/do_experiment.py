@@ -4,17 +4,22 @@ import argparse
 from experiment import Experiment
 from vm_pool import assign_hosts, VM_Pool
 
+from config import config
+
 def section(title=""):
     print("\n############ {0} ############".format(title))
 
 if __name__=="__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('experiment_name', type=str, help='name of the experiment')
+    argparser.add_argument('db_password', type=str, help='name of the experiment')
     argparser.add_argument('-f', '--experiments-file', help='experiments file',
         default='experiments.txt')
     argparser.add_argument('-p', '--vm-pool-file', help='file specifying vm hostnames',
         default='pool.txt')
     args = argparser.parse_args()
+
+    config['DBPASS'] = args.db_password
 
     xps = Experiment.parse_experiments_file(open(args.experiments_file))
     x = xps[args.experiment_name]
