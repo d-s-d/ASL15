@@ -70,9 +70,6 @@ class Database_VM(VM):
             [config['DBNAME'], config['DBUSER'], config['DBPASS']])
         return t
 
-    def run(self):
-        pass # nothing to do here
-
     def reset(self):
         pass
         # self._run('sudo -u postgres psql -f schema.sql')

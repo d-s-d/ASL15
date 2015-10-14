@@ -1,9 +1,11 @@
+import config_local
+
 config = dict()
 
 # DB configuration
 config['DBNAME'] = 'asl15'
 config['DBUSER'] = 'asl15_mw'
-config['DBPASS'] = 'f8db443b2357aebc86d48816d8a3442d'
+config['DBPASS'] = config_local.config['DBPASS']
 
 config['MWPORT'] = '9999'
 config['SCRIPT_DIR'] = 'setup_scripts'
