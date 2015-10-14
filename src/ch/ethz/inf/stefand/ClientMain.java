@@ -16,12 +16,12 @@ public class ClientMain {
 
     public static void main(String[] args) {
         if(args.length > 2) {
-            String clientClassName = args[2];
+            String clientClassName = args[0];
             try {
                 AbstractClient clientInstance =
                         (AbstractClient) Class.forName(CLASS_NAME_PREFIX+clientClassName).newInstance();
-                clientInstance.initialize("someName", args[0], Integer.parseInt(args[1]),
-                        Arrays.copyOfRange(args, 3, args.length));
+                clientInstance.initialize(args[1], args[2], Integer.parseInt(args[3]),
+                        Arrays.copyOfRange(args, 4, args.length));
                 clientInstance.start();
             } catch (InstantiationException e) {
                 e.printStackTrace();

@@ -5,6 +5,7 @@
   <property name="build.dir"  location="bin"/>
   <property name="lib.dir"    location="lib"/>
   <property name="res.dir"    location="res"/>
+  <property name="listenPort" value="9999" />
   <property name="middleware-main-class" value="ch.ethz.inf.stefand.MiddlewareMain" />
   <property name="client-main-class" value="ch.ethz.inf.stefand.ClientMain" />
   <path id="classpath">
@@ -27,26 +28,58 @@
     </jar>
   </target>
 
-  <target name="set-connection">
-      <condition property="portnumber" value="${portnumber}" else="9999">
-        <isset property="portnumber" />
+  <target name="set-mw-arguments">
+      <condition property="mwname" value="${mwname}" else="mwname">
+        <isset property="mwname" />
       </condition>
-      <condition property="hostname" value="${hostname}" else="localhost">
-        <isset property="hostname" />
+      <condition property="dbpass" value="${dbpass}" else="dbpass">
+        <isset property="dbpass" />
+      </condition>
+      <condition property="dbhost" value="${dbhost}" else="localhost">
+        <isset property="dbhost" />
+      </condition>
+      <condition property="dbuser" value="${dbuser}" else="asl15_mw">
+        <isset property="dbuser" />
+      </condition>
+      <condition property="dbpass" value="${dbpass}" else="dbpass">
+        <isset property="dbpass" />
+      </condition>
+      <condition property="listenPort" value="${listenPort}" else="9999">
+        <isset property="listenPort" />
       </condition>
   </target>
 
-  <target name="run-middleware" depends="jar, set-connection" description="execute the middleware" >
+  <target name="run-middleware" depends="jar, set-mw-arguments" description="execute the middleware" >
     <java classname="${middleware-main-class}" fork="true">
       <classpath>
         <path refid="classpath"/>
         <path location="${ant.project.name}.jar"/>
       </classpath>
-      <arg value="${portnumber}" />
+      <arg value="${mwname}" />
+      <arg value="${dbhost}" />
+      <arg value="${dbname}" />
+      <arg value="${dbuser}" />
+      <arg value="${dbpass}" />
+      <arg value="${listenPost}" />
     </java>
   </target>
+  
+  <target name="set-client-arguments">
+      <condition property="clienttype" value="${clienttype}" else="SimplePingClient">
+        <isset property="clienttype" />
+      </condition>
+      <condition property="clientname" value="${clientname}" else="clientname">
+        <isset property="clientname" />
+      </condition>
+      <condition property="hostname" value="${hostname}" else="localhost">
+        <isset property="hostname" />
+      </condition>
+      <condition property="listenPort" value="${listenPort}" else="9999">
+        <isset property="listenPort" />
+      </condition>
+  </target>
 
-  <target name="run-client" depends="jar, set-connection" description="execute the client" >
+  <target name="run-client" depends="jar, set-client-arguments" description="execute the client" >
       <sleep seconds="1"/>
       <fail>
         <condition>
@@ -72,9 +105,10 @@
           <path refid="classpath"/>
           <path location="${ant.project.name}.jar"/>
         </classpath>
+        <arg value="${clienttype}" />
+        <arg value="${clientname}" />
         <arg value="${hostname}" />
         <arg value="${portnumber}" />
-        <arg value="${client-name}" />
         <arg value="${arg0}" />
           <arg value="${arg1}" />
           <arg value="${arg2}" />
