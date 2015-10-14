@@ -32,16 +32,16 @@
       <condition property="mwname" value="${mwname}" else="mwname">
         <isset property="mwname" />
       </condition>
-      <condition property="dbpass" value="${dbpass}" else="dbpass">
-        <isset property="dbpass" />
-      </condition>
       <condition property="dbhost" value="${dbhost}" else="localhost">
         <isset property="dbhost" />
+      </condition>
+      <condition property="dbname" value="${dbname}" else="asl15">
+        <isset property="dbname" />
       </condition>
       <condition property="dbuser" value="${dbuser}" else="asl15_mw">
         <isset property="dbuser" />
       </condition>
-      <condition property="dbpass" value="${dbpass}" else="dbpass">
+      <condition property="dbpass" value="${dbpass}" else="asl15_mw">
         <isset property="dbpass" />
       </condition>
       <condition property="listenPort" value="${listenPort}" else="9999">
@@ -60,7 +60,7 @@
       <arg value="${dbname}" />
       <arg value="${dbuser}" />
       <arg value="${dbpass}" />
-      <arg value="${listenPost}" />
+      <arg value="${listenPort}" />
     </java>
   </target>
   
@@ -84,7 +84,7 @@
       <fail>
         <condition>
           <not>
-            <isset property="client-name" />
+            <isset property="clienttype" />
           </not>
         </condition>
       </fail>
@@ -108,7 +108,7 @@
         <arg value="${clienttype}" />
         <arg value="${clientname}" />
         <arg value="${hostname}" />
-        <arg value="${portnumber}" />
+        <arg value="${listenPort}" />
         <arg value="${arg0}" />
           <arg value="${arg1}" />
           <arg value="${arg2}" />
@@ -120,17 +120,14 @@
       <fail>
         <condition>
           <not>
-            <isset property="client-name" />
+            <isset property="clienttype" />
           </not>
         </condition>
       </fail>
         <parallel>
             <antcall target="run-middleware">
-              <param name="portnumber" value="9999" />
             </antcall>
             <antcall target="run-client">
-                <param name="hostname" value="localhost" />
-                <param name="portnumber" value="9999" />
             </antcall>
         </parallel>
     </target>

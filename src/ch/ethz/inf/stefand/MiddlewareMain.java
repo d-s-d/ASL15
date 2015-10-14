@@ -17,6 +17,7 @@ public class MiddlewareMain {
             String dbname = args[2];
             String dbuser = args[3];
             String dbpass = args[4];
+            System.out.println(dbpass);
             int portNumber = Integer.parseInt(args[5]);
             int poolSize = Config.DEFAULT_POOL_SIZE;
             if(args.length > 6) {

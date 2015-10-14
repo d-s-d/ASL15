@@ -29,18 +29,17 @@ public class ClientDispatcher {
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(this.portNumber);
+            while(true) {
+                try {
+                    Socket client = serverSocket.accept();
+                    RequestContext reqContext = new RequestContext(client, connectionPool);
+                    threadPool.submit(reqContext);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
-        }
-
-        while(true) {
-            try {
-                Socket client = serverSocket.accept();
-                RequestContext reqContext = new RequestContext(client, connectionPool);
-                threadPool.submit(reqContext);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
     }
 }

@@ -37,15 +37,23 @@ class RemoteTask(object):
         self.t = None
 
         if not silence_stderr:
-            def print_err(line):
-                print("ERR: [{0}] {1}".format(self.hostname, line))
+            def print_err(task, line):
+                print("ERR: [{0}] {1}".format(task.__repr__(), line))
             self.pipe_event_handlers['stderr'].append((lambda x: True, print_err))
 
-    def register_filtered_queue(filt, q, pipe='stdout'):
+    def register_filtered_queue(self, filt, q, pipe='stdout'):
         assert pipe in ('stdout', 'stderr')
         assert isinstance(filt, types.FunctionType)
         assert isinstance(q, Queue)
         self.filtered_queues[pipe].append((filt, q))
+        return q
+
+    def register_pipe_event(self, filt, handler, pipe='stdout'):
+        print(pipe)
+        assert pipe in ('stdout', 'stderr')
+        assert isinstance(filt, types.FunctionType)
+        assert isinstance(handler, types.FunctionType) or isinstance(handler, types.MethodType)
+        self.pipe_event_handlers[pipe].append((filt, handler))
 
     def command(self, cmd, args=None):
         if args is None:
@@ -62,9 +70,13 @@ class RemoteTask(object):
         self.commands.append("{0} {1} {2}".format(
             SHELL_COMMAND, os.path.split(script)[1], get_args_string(args)))
 
-    def _run_command(self, cmd):
+    def _print_command(self, cmd):
         print("[{rep}] {command}".format(rep=self.__repr__(), command=cmd))
-        return Popen([cmd], shell=True, stdout=PIPE, stderr=PIPE)
+
+    def _run_command(self, cmd):
+        self._print_command(cmd)
+        new_proc = Popen([cmd], shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+        return new_proc
 
     def filter_output(self, ps):
         fd_map = dict([(getattr(ps, name).fileno(), (name, getattr(ps, name)))
@@ -81,7 +93,7 @@ class RemoteTask(object):
                 if len(line) > 0:
                     for (filt, handler) in self.pipe_event_handlers[fd_name]:
                         if filt(line):
-                            handler(line)
+                            handler(self, line)
                     for (filt, q) in self.filtered_queues[fd_name]:
                         line = f.readline()
                         if filt(line):

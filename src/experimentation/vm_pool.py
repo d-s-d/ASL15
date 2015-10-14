@@ -7,12 +7,8 @@ from remote_task import RemoteTask
 
 POOL_REGEXP = re.compile("^(\*+)(\s+(.*))?\n$");
 
-SCRIPT_DIR = 'setup_scripts'
-JRE_SETUP_SCRIPT = 'jre_setup.sh'
-DB_SETUP_SCRIPT = 'db_vm_setup.sh'
-
 def get_script_path(script_name):
-    return os.path.join(SCRIPT_DIR, script_name)
+    return os.path.join(config['SCRIPT_DIR'], script_name)
 
 class VM(object):
     def __init__(self, hostname="localhost"):
@@ -36,6 +32,12 @@ class VM(object):
     def __repr__(self):
         return "{0}@{1}".format(self.__class__.__name__, self.hostname)
 
+def setup_jre_task(hostname):
+    t = RemoteTask('setup jre and jar', hostname=hostname, once=True)
+    t.copy_file(config['JAR_FILE'])
+    t.run_sh_script(get_script_path(config['JRE_SETUP_SCRIPT']))
+    return t
+    
 
 class Client_VM(VM):
     def __init__(self, hostname="localhost"):
@@ -43,9 +45,7 @@ class Client_VM(VM):
         pass
 
     def setup(self):
-        t = RemoteTask('setup client', hostname=self.hostname, once=True)
-        t.run_sh_script(get_script_path(JRE_SETUP_SCRIPT))
-        return t
+        return setup_jre_task(self.hostname)
 
     def run(self):
         pass
@@ -53,23 +53,20 @@ class Client_VM(VM):
 
 class Middleware_VM(VM):
     def setup(self):
-        t = RemoteTask('setup middleware', hostname=self.hostname, once=True)
-        t.run_sh_script(get_script_path(JRE_SETUP_SCRIPT))
-        return t
+        return setup_jre_task(self.hostname)
 
     def __init__(self, hostname="localhost"):
         super(Middleware_VM, self).__init__(hostname)
         pass
-
 
 class Database_VM(VM):
     def __init__(self, hostname="localhost"):
         super(Database_VM, self).__init__(hostname)
 
     def setup(self):
-        t = RemoteTask('setup database', hostname=self.hostname, once=True)
+        t = RemoteTask('setup postgres', hostname=self.hostname, once=True)
         t.copy_file('../sql/schema.sql')
-        t.run_sh_script(os.path.join(SCRIPT_DIR, DB_SETUP_SCRIPT),
+        t.run_sh_script(get_script_path(config['DB_SETUP_SCRIPT']),
             [config['DBNAME'], config['DBUSER'], config['DBPASS']])
         return t
 
