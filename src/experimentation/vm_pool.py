@@ -1,36 +1,23 @@
 import re
-
-from fabric.api import run, put
-from fabric.state import env
+import os
+from urllib import quote_plus
 
 from config import config
+from remote_task import RemoteTask
 
-env.use_ssh_config = True
+POOL_REGEXP = re.compile("^(\*+)(\s+(.*))?\n$");
 
+SCRIPT_DIR = 'setup_scripts'
+JRE_SETUP_SCRIPT = 'jre_setup.sh'
+DB_SETUP_SCRIPT = 'db_vm_setup.sh'
 
-POOL_REGEXP = re.compile("(\*+)(\s+(.*))?\n");
-
-def once_per_instance(f):
-    def wrapper(self, *args, **kwargs):
-        ret = None
-        if not hasattr(self, '__has_run'):
-            self.__has_run = set()
-        if f not in self.__has_run:
-            ret = f(self, *args, **kwargs)
-            self.__has_run.add(f)
-        return ret
-    return wrapper
-
+def get_script_path(script_name):
+    return os.path.join(SCRIPT_DIR, script_name)
 
 class VM(object):
-    def _put(self, *args, **kwargs):
-        env.host_string = self.hostname
-        put(*args, **kwargs)
+    def __init__(self, hostname="localhost"):
+        self.hostname = hostname
 
-    def _run(self, *args, **kwargs):
-        env.host_string = self.hostname
-        run(*args, **kwargs)
-        
     def setup():
         pass
     
@@ -46,9 +33,6 @@ class VM(object):
     def shutdown():
         pass
 
-    def __init__(self, hostname="localhost"):
-        self.hostname = hostname
-
     def __repr__(self):
         return "{0}@{1}".format(self.__class__.__name__, self.hostname)
 
@@ -58,12 +42,20 @@ class Client_VM(VM):
         super(Client_VM, self).__init__(hostname)
         pass
 
+    def setup(self):
+        t = RemoteTask('setup client', hostname=self.hostname, once=True)
+        t.run_sh_script(get_script_path(JRE_SETUP_SCRIPT))
+        return t
+
+    def run(self):
+        pass
+
 
 class Middleware_VM(VM):
-    @once_per_instance
     def setup(self):
-        self._put('setup_scripts/mw_vm_setup.sh', 'mw_vm_setup.sh')
-        self._run('sh mw_vm_setup.sh')
+        t = RemoteTask('setup middleware', hostname=self.hostname, once=True)
+        t.run_sh_script(get_script_path(JRE_SETUP_SCRIPT))
+        return t
 
     def __init__(self, hostname="localhost"):
         super(Middleware_VM, self).__init__(hostname)
@@ -74,31 +66,32 @@ class Database_VM(VM):
     def __init__(self, hostname="localhost"):
         super(Database_VM, self).__init__(hostname)
 
-    @once_per_instance
     def setup(self):
-        self._put('../sql/schema.sql', 'schema.sql')
-        self._put('setup_scripts/db_vm_setup.sh', 'db_vm_setup.sh')
-        self._run('sh db_vm_setup.sh {DBNAME} {DBUSER} {DBPASS}'.format(**config))
+        t = RemoteTask('setup database', hostname=self.hostname, once=True)
+        t.copy_file('../sql/schema.sql')
+        t.run_sh_script(os.path.join(SCRIPT_DIR, DB_SETUP_SCRIPT),
+            [config['DBNAME'], config['DBUSER'], config['DBPASS']])
+        return t
 
-    @once_per_instance
     def run(self):
         pass # nothing to do here
 
-    @once_per_instance
     def reset(self):
-        self._run('sudo -u postgres psql -f schema.sql')
-
+        pass
+        # self._run('sudo -u postgres psql -f schema.sql')
 
 level_to_vm_type = [Database_VM, Middleware_VM, Client_VM]
 
-def assign_hosts(experiment, vm_pool):
-    def assign_hosts_rec(cur_node, level):
-        cur_node.instance = level_to_vm_type[level](vm_pool.get_next_vm(level))
+def assign_vms(experiment, vm_pool):
+    instantiated_vms = {}
+    def assign_vms_rec(cur_node, level):
+        cur_node.instance = vm_pool.get_next_vm(level)
         if hasattr(cur_node, 'children'):
             for child in cur_node.children:
-                assign_hosts_rec(child, level+1)
+                assign_vms_rec(child, level+1)
         
-    assign_hosts_rec(experiment, 0)
+    assign_vms_rec(experiment, 0)
+
 
 class VM_Pool(object):
     def __init__(self, f=None):
@@ -113,7 +106,7 @@ class VM_Pool(object):
                 hosts = hosts_string.split()
             else:
                 hosts = ['localhost']
-            self.hosts[level] = hosts
+            self.hosts[level] = map(lambda h: level_to_vm_type[level](h), hosts)
         self.modulus = map(lambda l: len(l), self.hosts)
     
     def get_next_vm(self, level=0):

@@ -6,12 +6,13 @@ DBPASS=$3
 PG_VERSION=9.3
 PG_ETC=/etc/postgresql/$PG_VERSION/main/
 
+echo "`date`: ecuted with arguments $DBNAME $DBUSER $DBPASS" >> db_setup.log
 export DEBIAN_FRONTEND=noninteractive
 
 # Setup PostgreSQL
-sudo apt-get update
-sudo apt-get -y upgrade
-sudo apt-get -y install "postgresql-$PG_VERSION" "postgresql-contrib-$PG_VERSION"
+sudo apt-get -qq update
+sudo apt-get -q -y upgrade
+sudo apt-get -q -y install "postgresql-$PG_VERSION" "postgresql-contrib-$PG_VERSION"
 
 PG_CONF="$PG_ETC/postgresql.conf"
 PG_HBA="$PG_ETC/pg_hba.conf"
@@ -27,6 +28,10 @@ sudo sh -c "echo \"host    all             all             all       md5\" >> \"
 sudo service postgresql restart
 
 cat << EOF | sudo -u postgres psql
+-- drop database
+DROP DATABASE IF EXISTS $DBNAME;
+-- drop user
+DROP USER IF EXISTS $DBUSER;
 -- register db user
 CREATE USER $DBUSER WITH PASSWORD '$DBPASS';
 -- create database
