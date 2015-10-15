@@ -4,8 +4,8 @@ import os
 import hashlib
 from Queue import Queue
 
-from experiment import Experiment
-from vm_pool import assign_vms, VM_Pool
+from experiment import ExperimentFile
+from vm_pool import VM_Pool
 
 from remote_task import RemoteTask
 
@@ -33,17 +33,14 @@ if __name__=="__main__":
     # argparser.add_argument('db_password', type=str, help='name of the experiment')
     argparser.add_argument('-f', '--experiments-file', help='experiments file',
         default='experiments.txt')
-    argparser.add_argument('-p', '--vm-pool-file', help='file specifying vm hostnames',
-        default='pool.txt')
     args = argparser.parse_args()
 
     m = hashlib.md5()
     m.update(os.urandom(16))
 
-    xps = Experiment.parse_experiments_file(open(args.experiments_file))
-    x = xps[args.experiment_name]
-    vmpool = VM_Pool(open(args.vm_pool_file))
-    assign_vms(x, vmpool)
+    vmpool = VM_Pool()
+    xfile = ExperimentFile(open(args.experiments_file), vmpool)
+    x = xfile.children[args.experiment_name]
 
     phase("SETUP")
     execute_at_once(x.collect_command('setup'))

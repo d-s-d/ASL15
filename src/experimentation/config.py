@@ -7,6 +7,8 @@ config['DBNAME'] = 'asl15'
 config['DBUSER'] = 'asl15_mw'
 config['DBPASS'] = config_local.config['DBPASS']
 
+config['VM_TYPES'] = ['database', 'middleware', 'client']
+
 config['MWPORT'] = '9999'
 config['SCRIPT_DIR'] = 'setup_scripts'
 config['JRE_SETUP_SCRIPT'] = 'jre_setup.sh'
