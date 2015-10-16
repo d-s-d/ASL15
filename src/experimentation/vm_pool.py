@@ -19,3 +19,8 @@ class VM_Pool(object):
     def get_vm(self, vm_type, idx=0):
         return self.hosts[vm_type][idx % len(self.hosts[vm_type])]
 
+    def start():
+        pass #TODO
+
+    def stop():
+        pass #TODO

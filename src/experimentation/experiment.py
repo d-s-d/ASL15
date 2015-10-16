@@ -12,29 +12,29 @@ NOD_DEF_REGEXP = re.compile(
 def get_script_path(script_name):
     return os.path.join(config['SCRIPT_DIR'], script_name)
 
+
 def setup_jre_task(hostname):
     t = RemoteTask('setup jre and jar', hostname=hostname, once=True)
     t.copy_file(config['JAR_FILE'])
     t.run_sh_script(get_script_path(config['JRE_SETUP_SCRIPT']))
     return t
 
+
 class ExperimentNode(object):
-    def __init__(self, *args, **kwargs):
-        assert isinstance(kwargs['tags'], dict)
-        assert 'instance' in kwargs
-        self.tags = kwargs['tags']
+    def __init__(self, name, *args, **kwargs):
+        self.name = name
         self.args = args
-        self.instance = kwargs['instance']
+        self.instance = None
         self.children = []
 
     def _hostname(self):
         return self.instance.public_dns_name
 
-    def collect_command(self, command):
+    def collect_command(self, command, *args, **kwargs):
         def collect_rec(collections, level, node):
             collections.append([])
             if hasattr(node, command):
-                task = getattr(node, command)()
+                task = getattr(node, command)(*args, **kwargs)
                 if task is not None:
                     collections[level].append(task)
             if hasattr(node, 'children'):
@@ -47,16 +47,18 @@ class ExperimentNode(object):
     def add_child(self, child):
         self.children.append(child)
 
+    def assign_vm(self, vm_pool):
+        self.instance = vm_pool.get_vm(self.__class__.VM_TYPE)
+
     def __repr__(self):
-        return "{cls}:{host} ({args})".format(cls=self.__class__.__name__,
-            host=self._hostname(), args=repr(self.args))
+        return "{cls}:{host}:{name} ({cs})".format(cls=self.__class__.__name__,
+            host=self._hostname(), name=self.name, cs='\n  '.join(map(repr, (self.children))) )
 
 class ClientNode(ExperimentNode):
     VM_TYPE='client'
-    def __init__(self, client_type, client_name, *args, **kwargs):
-        super(ClientNode, self).__init__(*args, **kwargs) 
+    def __init__(self, name, client_type, *args, **kwargs):
+        super(ClientNode, self).__init__(name, client_type, *args, **kwargs) 
         self.client_type = client_type
-        self.client_name = client_name
 
     def run(self):
         t = RemoteTask('run client', self._hostname())
@@ -67,10 +69,6 @@ class ClientNode(ExperimentNode):
 
 class MiddlewareNode(ExperimentNode):
     VM_TYPE='middleware'
-    def __init__(self, name, *args, **kwargs):
-        super(MiddlewareNode, self).__init__(*args, **kwargs)
-        self.name = name
-
     def setup(self):
         return setup_jre_task(self._hostname())
 
@@ -89,10 +87,6 @@ class MiddlewareNode(ExperimentNode):
 
 class DatabaseNode(ExperimentNode):
     VM_TYPE='database'
-    def __init__(self, name, *args, **kwargs):
-        super(DatabaseNode, self).__init__(*args, **kwargs)
-        self.name = name
-
     def setup(self):
         t = RemoteTask('setup postgres', hostname=self._hostname(), once=True)
         t.copy_file('../sql/schema.sql')
@@ -100,42 +94,42 @@ class DatabaseNode(ExperimentNode):
             [config['DBNAME'], config['DBUSER'], config['DBPASS']])
         return t
 
-    def reset(self):
-        self.instance.reset()
-
-NODE_CLASSES = dict(filter(lambda cls: cls[0].endswith('Node'),
-    inspect.getmembers(sys.modules[__name__], inspect.isclass)))
+experiments = dict()
 
 class ExperimentFile(object):
-    def __init__(self, f, instance_pool):
-        path = dict()
-        self.children = dict()
-        path[0] = self
-        line_count = 0
-        for line in f:
-            line_count += 1
-            m = NOD_DEF_REGEXP.match(line)
-            if m is None:
-                continue
-            (_depth, repetitions, cls_name, arg_string) = m.groups()
-            if repetitions is None:
-                repetitions = 1
-            _depth = len(_depth)
-            for i in xrange(int(repetitions)):
-                try:
-                    cousinno = path[_depth].tags['cousinno']
-                except KeyError:
-                    cousinno = 0
-                siblingno = len(path[_depth-1].children)
-                child_tags = {'siblingno': siblingno, 'cousinno': cousinno}
-                args = arg_string.format(**child_tags).split()
-                cls = NODE_CLASSES[cls_name+'Node']
-                new_child = cls(*args, tags=child_tags,
-                    instance=instance_pool.get_vm(cls.VM_TYPE, cousinno))
-                path[_depth-1].add_child(new_child)
-                new_child.parent = path[_depth-1]
-                path[_depth] = new_child
+    def __init__(self, name):
+        self.name = name
 
-    def add_child(self, new_child):
-        self.children[new_child.name] = new_child
+    def add_child(self, child):
+        experiments[self.name] = child
 
+def add_experiment(x_name, structure, combinations=None):
+    structure(ExperimentFile(x_name), 0, 0, [])
+
+def node(cls, nodeargs, *args):
+    def node_constructor(parent, level, childno, max_siblings):
+        if len(max_siblings) < level+1:
+            max_siblings.append(0)
+        child_tags = {'siblingno': max_siblings[level], 'childno': childno}
+        _args = map(lambda a: a.format(**child_tags), nodeargs)
+        new_child = cls(*_args)
+        parent.add_child(new_child) 
+
+        max_siblings[level] += 1
+
+        if len(args) > 0:
+            children = args[0]
+            _childno = 0
+            for i in xrange(len(children)):
+                _childno = children[i](new_child, level+1, _childno, max_siblings)
+        return childno + 1
+
+    return node_constructor
+
+def xnode(reps, cls, nodeargs, *args):
+    def node_constructor(parent, level, childno, max_siblings):
+        constructor = node(cls, nodeargs, *args)
+        for i in xrange(reps):
+            childno = constructor(parent, level, childno, max_siblings)
+        return childno
+    return node_constructor

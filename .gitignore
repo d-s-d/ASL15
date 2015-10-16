@@ -64,4 +64,4 @@ bin/*
 *.tmp
 
 #
-src/experimentation/config_local.py
+*_local.py
