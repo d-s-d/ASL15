@@ -10,8 +10,6 @@ public class MiddlewareMain {
 
     public static void main(String[] args) {
         if(args.length > 0) {
-            /*for(int i = 0; i < 1024; i++)
-                logger.trace("Middleware started."); */
             String mwname = args[0];
             String dbhost = args[1];
             String dbname = args[2];

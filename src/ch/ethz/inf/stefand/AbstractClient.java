@@ -32,10 +32,13 @@ public abstract class AbstractClient {
         ObjectInputStream responseStream = null;
         ObjectOutputStream commandStream = null;
         Object response = null;
+        long startTime;
         // open connection
         try {
             socket = new Socket(this.middlewareHostname, this.middlewarePortNumber);
             commandStream = new ObjectOutputStream(socket.getOutputStream());
+            // TODO: Start
+            startTime = System.currentTimeMillis();
             commandStream.writeObject(command);
             commandStream.flush();
             responseStream = new ObjectInputStream(socket.getInputStream());
@@ -51,6 +54,10 @@ public abstract class AbstractClient {
         }
         if(!command.responseType().isAssignableFrom(response.getClass())) {
             throw new UnexpectedResponseTypeException(command, response);
+        }
+        final long deltaTime = System.currentTimeMillis() - startTime;
+        if( Config.LOGGED_COMMANDS.contains(command.getClass()) ) {
+            // log deltaTime
         }
         return response;
     }

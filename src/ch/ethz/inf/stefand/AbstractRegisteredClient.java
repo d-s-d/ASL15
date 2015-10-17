@@ -38,6 +38,7 @@ public abstract class AbstractRegisteredClient extends AbstractClient {
     public int sendMessage(int q, int s, int r, String t)
             throws ClassNotFoundException, UnexpectedResponseTypeException, RemoteException, IOException {
         return (Integer) this.sendCommand(new SendMessageDBCommand(q,s,r,t));
+        // Log message
     }
 
     public int createQueue(String queueName)
