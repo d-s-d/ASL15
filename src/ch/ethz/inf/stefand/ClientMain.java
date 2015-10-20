@@ -39,7 +39,6 @@ public class ClientMain {
     public static void main(String[] args) {
         if(args.length > 3) {
             try {
-                logger.warn("some warning");
                 System.out.printf("Starting client: %s, %s, %s, %s.\n", args[0], args[1], args[2], args[3]);
                 String clienttype = args[0];
                 String clientname = args[1];

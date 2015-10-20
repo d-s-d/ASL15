@@ -2,10 +2,9 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
-sudo apt-get -qq update
-sudo apt-get -q upgrade -y
-sudo apt-get -q install -y openjdk-7-jre-headless
-sudo apt-get -q install -y fastjar
+sudo apt-get update
+sudo apt-get upgrade -y
+sudo apt-get install -y openjdk-7-jre-headless
 
 LOG4J_CORE_JAR=log4j-core-2.4.1.jar
 JDBC_PSQL_JAR=postgresql-9.4-1204.jdbc4.jar
@@ -25,5 +24,3 @@ if ! [ -e $JDBC_PSQL_JAR ]; then
 fi
 
 cd 
-
-fastjar xf ASL15.jar

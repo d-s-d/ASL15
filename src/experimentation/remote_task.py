@@ -48,17 +48,24 @@ class RemoteTask(object):
         self.filtered_queues[pipe].append((filt, q))
         return q
 
-    def register_pipe_event(self, filt, handler, pipe='stdout'):
-        print(pipe)
+    def register_pipe_event(self, filt=lambda x: True, handler=None, pipe='stdout'):
+        if handler is None:
+            handler = RemoteTask._print_command
         assert pipe in ('stdout', 'stderr')
         assert isinstance(filt, types.FunctionType)
         assert isinstance(handler, types.FunctionType) or isinstance(handler, types.MethodType)
         self.pipe_event_handlers[pipe].append((filt, handler))
 
-    def command(self, cmd, args=None):
+    def _format_command(self, cmd, args=None):
         if args is None:
             args = []
-        self.commands.append("{0} {1}".format(cmd, get_args_string(args)))
+        return "{0} {1}".format(cmd, get_args_string(args))
+
+    def prepend_command(self, cmd, args=None):
+        self.commands.insert(0, self._format_command(cmd, args))
+
+    def command(self, cmd, args=None):
+        self.commands.append(self._format_command(cmd, args))
 
     def copy_file(self, src, target=None):
         self.files.append( (src, target) )
@@ -113,33 +120,32 @@ class RemoteTask(object):
         for fd in fd_map.keys():
             p.unregister(fd)
 
-    def execute(self):
-        def execute_deploy_task():
-            # copy files without target
-            files_wo_trgt = map(lambda i: i[0], filter(lambda i: i[1] is None, self.files))
-            if len(files_wo_trgt) > 0:
-                p_wo_trgt = self._run_command(get_scp_command(self.hostname, files_wo_trgt))
-                self.filter_output(p_wo_trgt)
-            # copy files with target
-            files_w_trgt = filter(lambda i: i[1] is not None, self.files)
-            if len(files_w_trgt) > 0:
-                for f in files_w_trgt:
-                    self.filter_output(self._run_command(
-                        get_scp_command(self.hostname, f[0], f[1])))
+    def _execute(self):
+        # copy files without target
+        files_wo_trgt = map(lambda i: i[0], filter(lambda i: i[1] is None, self.files))
+        if len(files_wo_trgt) > 0:
+            p_wo_trgt = self._run_command(get_scp_command(self.hostname, files_wo_trgt))
+            self.filter_output(p_wo_trgt)
+        # copy files with target
+        files_w_trgt = filter(lambda i: i[1] is not None, self.files)
+        if len(files_w_trgt) > 0:
+            for f in files_w_trgt:
+                self.filter_output(self._run_command(
+                    get_scp_command(self.hostname, f[0], f[1])))
 
-            # run scripts
-            if len(self.commands) > 0:
-                for c in self.commands:
-                    self.filter_output(self._run_command(
-                        get_ssh_command(self.hostname, c)))
-       
+        # run scripts
+        if len(self.commands) > 0:
+            for c in self.commands:
+                self.filter_output(self._run_command(
+                    get_ssh_command(self.hostname, c)))
+
+    def execute(self):
         if self.once:
             if self.__repr__() in scheduled_tasks:
                 return
             else:
                 scheduled_tasks.add(self.__repr__())
-        
-        self.t = Thread(target=execute_deploy_task)
+        self.t = Thread(target=self._execute)
         self.t.start()
 
     def join(self):
@@ -148,3 +154,4 @@ class RemoteTask(object):
 
     def __repr__(self):
         return self.repr_string
+

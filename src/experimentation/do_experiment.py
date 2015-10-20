@@ -23,6 +23,7 @@ def execute_at_once(tasks):
     for l in tasks:
         for t in l:
             subphase("SCHEDULING TASK {0}".format(t.__repr__()))
+            t.register_pipe_event(pipe='stdout')
             t.execute()
     for l in tasks:
         for t in l:
@@ -40,8 +41,6 @@ if __name__=="__main__":
     x = experiments[args.experiment_name]
 
     x.collect_command('assign_vm', vmpool)
-    print(x)
-    sys.exit(0)
     phase("SETUP")
     execute_at_once(x.collect_command('setup'))
 
@@ -63,6 +62,7 @@ if __name__=="__main__":
 
     for client_task in tasks[2]:
         client_task.join()
+
 
     subphase("SHUTDOWN MIDDLEWARE")
     kill_tasks = x.collect_command('terminate')

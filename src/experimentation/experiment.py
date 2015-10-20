@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import types
 import inspect
 from remote_task import RemoteTask
 from config import config
@@ -15,7 +16,7 @@ def get_script_path(script_name):
 
 def setup_jre_task(hostname):
     t = RemoteTask('setup jre and jar', hostname=hostname, once=True)
-    t.copy_file(config['JAR_FILE'])
+    t.copy_file(config['LOCAL_JAR_FILE'])
     t.run_sh_script(get_script_path(config['JRE_SETUP_SCRIPT']))
     return t
 
@@ -46,6 +47,7 @@ class ExperimentNode(object):
 
     def add_child(self, child):
         self.children.append(child)
+        child.parent = self
 
     def assign_vm(self, vm_pool):
         self.instance = vm_pool.get_vm(self.__class__.VM_TYPE)
@@ -54,18 +56,38 @@ class ExperimentNode(object):
         return "{cls}:{host}:{name} ({cs})".format(cls=self.__class__.__name__,
             host=self._hostname(), name=self.name, cs='\n  '.join(map(repr, (self.children))) )
 
+
 class ClientNode(ExperimentNode):
     VM_TYPE='client'
     def __init__(self, name, client_type, *args, **kwargs):
         super(ClientNode, self).__init__(name, client_type, *args, **kwargs) 
         self.client_type = client_type
+        self.args = args
+
+    def setup(self):
+        return setup_jre_task(self._hostname())
 
     def run(self):
         t = RemoteTask('run client', self._hostname())
         t.command(config['JAVA_CLIENT_COMMAND'],
-            [self.client_type, self.name, self.parent._hostname(), config['MWPORT']] + self.args)
+            [self.client_type, self.name, self.parent._hostname(), config['MWPORT']] + list(self.args))
         return t
 
+class DelayedClientNode(ClientNode):
+    VM_TYPE='client'
+
+    def __init__(self, *args, **kwargs):
+        super(DelayedClientNode, self).__init__(*args, **kwargs)
+        assert 'delay' in kwargs
+        self.delay = kwargs['delay']
+
+    def run(self):
+        task = super(DelayedClientNode, self).run()
+        task.prepend_command("sleep", [self.delay]) # ;-)
+        return task
+
+    def __repr__(self):
+        return super(DelayedClientNode, self).__repr__() + " delayed by: " + str(self.delay)
 
 class MiddlewareNode(ExperimentNode):
     VM_TYPE='middleware'
@@ -73,7 +95,7 @@ class MiddlewareNode(ExperimentNode):
         return setup_jre_task(self._hostname())
 
     def run(self):
-        t = RemoteTask('run middleware', self._hostname())
+        t = RemoteTask('run middleware', self._hostname(), once=True)
         t.command(config['JAVA_MW_COMMAND'],
             [self.name, self.parent._hostname(), config['DBNAME'],
             config['DBUSER'], config['DBPASS'], config['MWPORT']])
@@ -106,19 +128,34 @@ class ExperimentFile(object):
 def add_experiment(x_name, structure, combinations=None):
     structure(ExperimentFile(x_name), 0, 0, [])
 
+def process_args(args, siblingno, childno):
+    child_tags = {'siblingno': siblingno, 'childno': childno}
+    for arg in args:
+        if isinstance(arg, types.LambdaType) or isinstance(arg, types.FunctionType):
+            yield arg(childno, siblingno)
+        else:
+            yield arg.format(**child_tags)
+
 def node(cls, nodeargs, *args):
     def node_constructor(parent, level, childno, max_siblings):
+        arg_offset = 0
         if len(max_siblings) < level+1:
             max_siblings.append(0)
-        child_tags = {'siblingno': max_siblings[level], 'childno': childno}
-        _args = map(lambda a: a.format(**child_tags), nodeargs)
-        new_child = cls(*_args)
-        parent.add_child(new_child) 
 
+        siblingno = max_siblings[level]
+        _args = list(process_args(nodeargs, siblingno, childno))
+        _kwargs = {}
+        if len(args) > 0 and isinstance(args[0], dict):
+            nodekwargs = args[0]
+            _kwargs = dict(zip(nodekwargs.keys(), process_args(nodekwargs.values(), siblingno, childno)))
+            arg_offset += 1
+
+        new_child = cls(*_args, **_kwargs)
+        parent.add_child(new_child) 
         max_siblings[level] += 1
 
-        if len(args) > 0:
-            children = args[0]
+        if len(args) > arg_offset and isinstance(args[arg_offset], list):
+            children = args[arg_offset]
             _childno = 0
             for i in xrange(len(children)):
                 _childno = children[i](new_child, level+1, _childno, max_siblings)
