@@ -1,5 +1,6 @@
 package ch.ethz.inf.stefand;
 
+import ch.ethz.inf.stefand.protocol.PingCommand;
 import ch.ethz.inf.stefand.protocol.PopDBCommand;
 import ch.ethz.inf.stefand.protocol.SendMessageDBCommand;
 
@@ -21,5 +22,6 @@ public final class Config {
     static {
         LOGGED_COMMANDS.add(PopDBCommand.class);
         LOGGED_COMMANDS.add(SendMessageDBCommand.class);
+        LOGGED_COMMANDS.add(PingCommand.class);
     }
 }

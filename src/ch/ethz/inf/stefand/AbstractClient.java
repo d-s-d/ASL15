@@ -1,6 +1,8 @@
 package ch.ethz.inf.stefand;
 
 import ch.ethz.inf.stefand.protocol.Command;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -11,6 +13,8 @@ import java.net.Socket;
  * Created by dsd on 9/30/15.
  */
 public abstract class AbstractClient {
+    protected static final Logger logger = LogManager.getLogger(AbstractClient.class);
+
     protected String name;
     protected String middlewareHostname;
     protected int middlewarePortNumber;
@@ -21,10 +25,11 @@ public abstract class AbstractClient {
         this.middlewareHostname = middlewareHostname;
         this.middlewarePortNumber = middlewarePortNumber;
         this.args = args;
+        logger.trace(System.currentTimeMillis());
     }
 
     public abstract void start()
-            throws ClassNotFoundException, UnexpectedResponseTypeException, RemoteException, IOException;
+            throws ClassNotFoundException, UnexpectedResponseTypeException, IOException;
 
     protected Object sendCommand(Command command)
             throws IOException, ClassNotFoundException, UnexpectedResponseTypeException, RemoteException {
@@ -56,9 +61,22 @@ public abstract class AbstractClient {
             throw new UnexpectedResponseTypeException(command, response);
         }
         final long deltaTime = System.currentTimeMillis() - startTime;
-        if( Config.LOGGED_COMMANDS.contains(command.getClass()) ) {
-            // log deltaTime
+        final Class cls = command.getClass();
+        if( Config.LOGGED_COMMANDS.contains(cls) ) {
+            logger.trace(cls.getSimpleName() + ": " + Long.toString(deltaTime));
         }
         return response;
+    }
+
+    // Reference: http://stackoverflow.com/questions/9655181/
+    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
     }
 }

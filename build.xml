@@ -18,7 +18,9 @@
   <target name="compile" description="compiles the source">
     <!-- Compile the java code from ${src} into ${build} -->
     <mkdir dir="${build.dir}"/>
-    <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="classpath" includeantruntime="false" />
+    <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="classpath" includeantruntime="false">
+        <compilerarg line="-Xlint:unchecked" />
+    </javac>
   </target>
 
   <target name="jar" depends="compile" description="generate a jar executable" >

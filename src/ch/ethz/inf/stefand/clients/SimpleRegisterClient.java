@@ -14,7 +14,11 @@ import java.io.IOException;
  */
 public class SimpleRegisterClient extends AbstractRegisteredClient {
     @Override
-    public void start() throws ClassNotFoundException, UnexpectedResponseTypeException, RemoteException, IOException {
-        shutdown();
+    public void start() throws ClassNotFoundException, UnexpectedResponseTypeException, IOException {
+        try {
+            shutdown();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 }
