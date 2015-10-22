@@ -11,8 +11,8 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Setup PostgreSQL
 sudo apt-get -qq update
-sudo apt-get -q -y upgrade
-sudo apt-get -q -y install "postgresql-$PG_VERSION" "postgresql-contrib-$PG_VERSION"
+sudo apt-get -qq -y upgrade
+sudo apt-get -qq -y install "postgresql-$PG_VERSION" "postgresql-contrib-$PG_VERSION"
 
 PG_CONF="$PG_ETC/postgresql.conf"
 PG_HBA="$PG_ETC/pg_hba.conf"

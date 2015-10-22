@@ -73,6 +73,19 @@ class ClientNode(ExperimentNode):
             [self.client_type, self.name, self.parent._hostname(), config['MWPORT']] + list(self.args))
         return t
 
+    def collect_logs(self, target_dir):
+        host_target_dir = os.path.join(target_dir, self._hostname())
+        try:
+            os.makedirs(host_target_dir)
+        except OSError as e:
+            if e.errno != 17:
+                print e
+        t = RemoteTask('collect middleware log', self._hostname(), once=True)
+        t.command('gzip', [config['CLIENT_LOG_REGEX']])
+        t.download_file(config['CLIENT_LOG_REGEX']+'.gz', host_target_dir)
+        return t
+
+
 class DelayedClientNode(ClientNode):
     VM_TYPE='client'
 
@@ -104,6 +117,12 @@ class MiddlewareNode(ExperimentNode):
     def terminate(self):
         t = RemoteTask('stop middleware', self._hostname(), once=True)
         t.command('killall java')
+        return t
+
+    def collect_logs(self, target_dir):
+        t = RemoteTask('collect middleware log', self._hostname(), once=True)
+        t.command('gzip', [config['MW_LOG_REGEX']])
+        t.download_file(config['MW_LOG_REGEX']+'.gz', target_dir)
         return t
 
 

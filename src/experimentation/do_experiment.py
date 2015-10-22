@@ -2,12 +2,14 @@ import sys
 import argparse
 import os
 import hashlib
+import time
+from datetime import datetime
 from Queue import Queue
 
 from experiment import experiments
 from vm_pool import VM_Pool
 
-from remote_task import RemoteTask
+from remote_task import RemoteTask, AlreadyScheduledException
 from config import config
 
 import experiments_local
@@ -24,7 +26,10 @@ def execute_at_once(tasks):
         for t in l:
             subphase("SCHEDULING TASK {0}".format(t.__repr__()))
             t.register_pipe_event(pipe='stdout')
-            t.execute()
+            try:
+                t.execute()
+            except AlreadyScheduledException:
+                pass
     for l in tasks:
         for t in l:
             t.join()
@@ -39,20 +44,34 @@ if __name__=="__main__":
 
     vmpool = VM_Pool()
     x = experiments[args.experiment_name]
+    
+    phase("START VMS")
 
-    x.collect_command('assign_vm', vmpool)
+    if not vmpool.are_all_running():
+        vmpool.start()
+    while not vmpool.are_all_running():
+        time.sleep(6)
+        print("Waiting for vms to start.")
+
+
     phase("SETUP")
+    
+    x.collect_command('assign_vm', vmpool)
     execute_at_once(x.collect_command('setup'))
 
     phase("RUN")
     subphase("RUN MIDDLEWARE")
 
     tasks = x.collect_command('run')
-    mw_queues = map(lambda t: t.register_filtered_queue(lambda l: 'Middleware started' in l, Queue()),
-        tasks[1])
+    mw_queues = dict(map(lambda t: (t, t.register_filtered_queue(
+        lambda l: 'Middleware started' in l, Queue())), tasks[1]))
     for mw_t in tasks[1]:
-        mw_t.execute()
-    for q in mw_queues:
+        try:
+            mw_t.execute()
+        except:
+            del mw_queues[mw_t]
+
+    for q in mw_queues.values():
         print(q.get())
     
     subphase("RUN CLIENTS")
@@ -63,12 +82,16 @@ if __name__=="__main__":
     for client_task in tasks[2]:
         client_task.join()
 
-
     subphase("SHUTDOWN MIDDLEWARE")
     kill_tasks = x.collect_command('terminate')
     for kill_task in kill_tasks[1]:
         kill_task.execute()
 
-#x.collectlogs()
-    #x.reset()
-    #x.shutdown()
+    phase("COLLECT LOGS")
+    targetdir = os.path.join("logs", 
+        args.experiment_name,
+        datetime.now().isoformat().replace(':','_'))
+    execute_at_once(x.collect_command("collect_logs", targetdir))
+
+    phase("STOP VMs")
+    #vmpool.stop()

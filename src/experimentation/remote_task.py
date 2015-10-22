@@ -9,11 +9,25 @@ SHELL_COMMAND = 'sh'
 
 scheduled_tasks = set()
 
+class AlreadyScheduledException(Exception):
+    pass
+
+
+class AlreadyExecutingException(AlreadyScheduledException):
+    pass
+
+
 def escape_string(s):
     return s.replace('\\', '\\\\').replace('"', '\\"')
 
+def get_arg_string(arg):
+    if '*' in str(arg):
+        return str(arg)
+    else:
+        return '"{0}"'.format(escape_string(str(arg)))
+
 def get_args_string(args):
-    return ' '.join(map(lambda a: '"{0}"'.format(escape_string(str(a))), args))
+    return ' '.join(map(get_arg_string, args))
 
 def get_ssh_command(hostname, remote_command):
     return "ssh {0} \"{1}\"".format(hostname, escape_string(remote_command))
@@ -21,11 +35,16 @@ def get_ssh_command(hostname, remote_command):
 def get_scp_command(hostname, local_list, remote=''):
     return "scp {0} {1}:{2}".format(get_args_string(local_list), hostname, remote)
 
+def get_scp_download_command(hostname, remote_files, target=''):
+    return "scp {0}:{1} {2}".format(hostname, get_args_string(remote_files), target)
+    
+
 
 class RemoteTask(object):
     def __init__(self, unique_task_name, hostname='localhost', once=False, silence_stderr=False):
         self.commands = list()
         self.files = list()
+        self.download_files = list()
         self.scripts = list()
         self.once = once
         self.hostname = hostname
@@ -69,6 +88,9 @@ class RemoteTask(object):
 
     def copy_file(self, src, target=None):
         self.files.append( (src, target) )
+
+    def download_file(self, src, target=None):
+        self.download_files.append((src, target))
 
     def run_sh_script(self, script, args=None):
         if args is None:
@@ -121,17 +143,17 @@ class RemoteTask(object):
             p.unregister(fd)
 
     def _execute(self):
+        def _NoneToEmptyString(s):
+            if s is None:
+                return ""
+            return s
         # copy files without target
-        files_wo_trgt = map(lambda i: i[0], filter(lambda i: i[1] is None, self.files))
-        if len(files_wo_trgt) > 0:
-            p_wo_trgt = self._run_command(get_scp_command(self.hostname, files_wo_trgt))
-            self.filter_output(p_wo_trgt)
-        # copy files with target
-        files_w_trgt = filter(lambda i: i[1] is not None, self.files)
-        if len(files_w_trgt) > 0:
-            for f in files_w_trgt:
+
+        files_trgt = map(lambda i: (i[0], _NoneToEmptyString(i[1])), self.files)
+        if len(files_trgt) > 0:
+            for f in files_trgt:
                 self.filter_output(self._run_command(
-                    get_scp_command(self.hostname, f[0], f[1])))
+                    get_scp_command(self.hostname, [f[0]], f[1])))
 
         # run scripts
         if len(self.commands) > 0:
@@ -139,10 +161,19 @@ class RemoteTask(object):
                 self.filter_output(self._run_command(
                     get_ssh_command(self.hostname, c)))
 
+        download_files = map(lambda i: (i[0], _NoneToEmptyString(i[1])), 
+            self.download_files)
+        if len(self.download_files) > 0:
+            for f in self.download_files:
+                self.filter_output(self._run_command(
+                    get_scp_download_command(self.hostname, [f[0]], f[1])))
+
     def execute(self):
+        if self.t is not None and self.t.is_alive():
+            raise AlreadyExecutingException()
         if self.once:
             if self.__repr__() in scheduled_tasks:
-                return
+                raise AlreadyExecutingException()
             else:
                 scheduled_tasks.add(self.__repr__())
         self.t = Thread(target=self._execute)

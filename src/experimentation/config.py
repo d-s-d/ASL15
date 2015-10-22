@@ -22,3 +22,6 @@ config['JAVA_CP'] = '"{0}:{1}"'.format(config['JAR_FILE'], ':'.join(map(
     lambda x: 'lib/' + x, config['JAVA_LIBS'])))
 config['JAVA_CLIENT_COMMAND'] = 'java -cp ' + config['JAVA_CP'] + ' ch.ethz.inf.stefand.ClientMain'
 config['JAVA_MW_COMMAND'] = 'java -cp "' + config['JAVA_CP'] + ':." ch.ethz.inf.stefand.MiddlewareMain'
+
+config['CLIENT_LOG_REGEX'] = '/tmp/ASLClient*.log'
+config['MW_LOG_REGEX'] = '/tmp/ASLMW*.log'
