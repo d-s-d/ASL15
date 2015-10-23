@@ -1,6 +1,6 @@
-DROP TABLE messages CASCADE;
-DROP TABLE clients CASCADE;
-DROP TABLE queues CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS queues CASCADE;
 
 CREATE TABLE clients (
   c serial primary key,

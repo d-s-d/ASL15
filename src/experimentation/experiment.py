@@ -3,6 +3,7 @@ import os
 import sys
 import types
 import inspect
+from itertools import product
 from remote_task import RemoteTask
 from config import config
 
@@ -27,6 +28,7 @@ class ExperimentNode(object):
         self.args = args
         self.instance = None
         self.children = []
+        self.parent = None
 
     def _hostname(self):
         return self.instance.public_dns_name
@@ -44,6 +46,12 @@ class ExperimentNode(object):
         collections = []
         collect_rec(collections, 0, self)
         return collections
+
+    def get_root(self):
+        node = self
+        while node.parent is not None:
+            node = self.parent
+        return node
 
     def add_child(self, child):
         self.children.append(child)
@@ -85,6 +93,14 @@ class ClientNode(ExperimentNode):
         t.download_file(config['CLIENT_LOG_REGEX']+'.gz', host_target_dir)
         return t
 
+    def cleanup(self):
+        t = RemoteTask('cleanup client', self._hostname(), once=True)
+        t.command('rm -rf', ['{0}*'.format(config['CLIENT_LOG_REGEX'])])
+        return t
+
+    def reset(self):
+        return self.cleanup()
+
 
 class DelayedClientNode(ClientNode):
     VM_TYPE='client'
@@ -101,6 +117,7 @@ class DelayedClientNode(ClientNode):
 
     def __repr__(self):
         return super(DelayedClientNode, self).__repr__() + " delayed by: " + str(self.delay)
+
 
 class MiddlewareNode(ExperimentNode):
     VM_TYPE='middleware'
@@ -125,35 +142,71 @@ class MiddlewareNode(ExperimentNode):
         t.download_file(config['MW_LOG_REGEX']+'.gz', target_dir)
         return t
 
+    def cleanup(self):
+        t = RemoteTask('cleanup middleware', self._hostname(), once=True)
+        t.command('rm -rf', ['{0}*'.format(config['MW_LOG_REGEX'])])
+        return t
+
+    def reset(self):
+        self.cleanup()
 
 class DatabaseNode(ExperimentNode):
     VM_TYPE='database'
     def setup(self):
         t = RemoteTask('setup postgres', hostname=self._hostname(), once=True)
         t.copy_file('../sql/schema.sql')
+        t.copy_file('setup_scripts/db_config.sh')
+        t.copy_file('setup_scripts/reset_db.sh')
         t.run_sh_script(get_script_path(config['DB_SETUP_SCRIPT']),
+            [config['DBNAME'], config['DBUSER'], config['DBPASS']])
+        return t
+
+    def reset(self):
+        t = RemoteTask('reset postgres', hostname=self._hostname())
+        t.run_sh_script(get_script_path('reset_db.sh'),
             [config['DBNAME'], config['DBUSER'], config['DBPASS']])
         return t
 
 experiments = dict()
 
-class ExperimentFile(object):
-    def __init__(self, name):
+
+def process_arg(arg, tags):
+    if isinstance(arg, types.LambdaType) or isinstance(arg, types.FunctionType):
+        return str(arg(tags))
+    else:
+        return arg.format(**tags)
+
+
+class ExperimentInserter(object):
+    def __init__(self, name, tags=None):
         self.name = name
+        if tags is None:
+            tags = {}
+        self.tags = tags
 
     def add_child(self, child):
-        experiments[self.name] = child
+        experiments[process_arg(self.name, self.tags)] = child
+        child.tags = self.tags
+
+    def get_root(self):
+        return self
+
 
 def add_experiment(x_name, structure, combinations=None):
-    structure(ExperimentFile(x_name), 0, 0, [])
+    if combinations is not None:
+        combis = product(*combinations.values())
+        for combi in combis:
+            tags = dict(zip(combinations.keys(), combi))
+            structure(ExperimentInserter(x_name, tags), 0, 0, [])
+    else:
+        structure(ExperimentInserter(x_name), 0, 0, [])
 
-def process_args(args, siblingno, childno):
+
+def process_args(args, siblingno, childno, exptags):
     child_tags = {'siblingno': siblingno, 'childno': childno}
-    for arg in args:
-        if isinstance(arg, types.LambdaType) or isinstance(arg, types.FunctionType):
-            yield arg(childno, siblingno)
-        else:
-            yield arg.format(**child_tags)
+    child_tags.update(exptags)
+    return map(lambda a: process_arg(a, child_tags), args)
+
 
 def node(cls, nodeargs, *args):
     def node_constructor(parent, level, childno, max_siblings):
@@ -162,11 +215,13 @@ def node(cls, nodeargs, *args):
             max_siblings.append(0)
 
         siblingno = max_siblings[level]
-        _args = list(process_args(nodeargs, siblingno, childno))
+        _args = process_args(nodeargs, siblingno, childno, parent.get_root().tags)
         _kwargs = {}
         if len(args) > 0 and isinstance(args[0], dict):
             nodekwargs = args[0]
-            _kwargs = dict(zip(nodekwargs.keys(), process_args(nodekwargs.values(), siblingno, childno)))
+            _kwargs = dict(zip(nodekwargs.keys(),
+                process_args(nodekwargs.values(), siblingno, childno,
+                parent.get_root().tags)))
             arg_offset += 1
 
         new_child = cls(*_args, **_kwargs)
@@ -182,10 +237,14 @@ def node(cls, nodeargs, *args):
 
     return node_constructor
 
+
 def xnode(reps, cls, nodeargs, *args):
     def node_constructor(parent, level, childno, max_siblings):
         constructor = node(cls, nodeargs, *args)
-        for i in xrange(reps):
+        _reps = reps
+        if isinstance(_reps, str):
+            _reps = int(process_arg([_reps], parent.get_root().tags)) 
+        for i in xrange(_reps):
             childno = constructor(parent, level, childno, max_siblings)
         return childno
     return node_constructor

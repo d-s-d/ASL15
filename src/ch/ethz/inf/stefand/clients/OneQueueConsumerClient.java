@@ -19,24 +19,34 @@ import java.io.IOException;
 public class OneQueueConsumerClient extends SingleQueueClient {
     Logger logger = LogManager.getLogger();
 
+    long msgCount = 0;
     @Override
     public void start() throws ClassNotFoundException, UnexpectedResponseTypeException, IOException {
         Message msg = new Message(0,0,0,0,"");
-        while(!msg.text.startsWith(STOP_STRING) && System.currentTimeMillis() < stopTime) {
+        while(System.currentTimeMillis() < stopTime) {
             try {
                 msg = popQueue(clientId, queueId, 0);
+                if(msg.text.startsWith(STOP_STRING))
+                    break;
                 md.update(msg.text.getBytes("UTF-8"));
+                msgCount++;
             } catch(RemoteException e) {
                 if(!(e.getException() instanceof EmptyResultException))
-                    logger.error(e.getException().getMessage());
+                    logger.error(e.getException());
                 // in case of popping messages from a queue... an empty result exception is acceptable.
             }
         }
-        final String hexDigest = msg.text.substring(STOP_STRING.length());
-        if(hexDigest.equals(bytesToHex(md.digest()))) {
-            logger.trace(String.format("Transmission succeeded. Client state: ", hexDigest));
-        } else {
-            logger.warn(String.format("Message trace incomplete for client %s and queue %s.", name, queueName));
+
+        if (msg.text.length() > STOP_STRING.length()) {
+            final String hexDigest = msg.text.substring(STOP_STRING.length());
+            if(hexDigest.equals(bytesToHex(md.digest()))) {
+                logger.trace(String.format("Transmission succeeded: %d messages, client state: %s",
+                        msgCount, hexDigest));
+            } else {
+                logger.warn(String.format("Message trace incomplete for client %s and queue %s. %d messages consumed."+
+                        "producer client state %s, local state %s",
+                        hexDigest, bytesToHex(md.digest()), name, queueName, msgCount));
+            }
         }
     }
 }

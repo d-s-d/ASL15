@@ -39,7 +39,7 @@ public abstract class SingleQueueClient extends AbstractRegisteredClient {
 
         // get duration
         try {
-            duration = Long.parseLong(this.args[2]) * 1000;
+            duration = Long.parseLong(this.args[1]) * 1000;
         } catch (NumberFormatException|IndexOutOfBoundsException e) {
             duration = DEFAULT_DURATION;
             logger.error(e.getMessage());

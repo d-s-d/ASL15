@@ -39,7 +39,7 @@ public class ClientMain {
     public static void main(String[] args) {
         if(args.length > 3) {
             try {
-                System.out.printf("Starting client: %s, %s, %s, %s.\n", args[0], args[1], args[2], args[3]);
+                System.out.printf("Starting client: %s.\n", Arrays.toString(args));
                 String clienttype = args[0];
                 String clientname = args[1];
                 String mwhost = args[2];
@@ -50,14 +50,15 @@ public class ClientMain {
                         Arrays.copyOfRange(args, 4, args.length));
                 System.out.printf("Starting client: %s.\n", clienttype);
                 clientInstance.start();
+                System.out.println("Finished client: " + clientname);
             } catch (InstantiationException|IllegalAccessException|ClassNotFoundException|
                     UnexpectedResponseTypeException|IOException e) {
-                logger.error(e.getMessage());
+                logger.error(e);
             } catch (RemoteException e) {
                 // this can only happen during the initialization of the client.
                 // while the client is operating (after initialization), remote exceptions are expected to be dealt with
                 // by the concrete client class.
-                logger.error("Remote Exception: " + e.getMessage());
+                logger.error("Remote Exception: ", e.getException());
             }
         } else {
             System.out.println("You must provide at least: <hostname> <portnumber> <clientClass>");

@@ -21,7 +21,6 @@ public class OneQueueProducerClient extends SingleQueueClient {
 
     @Override
     public void start() throws ClassNotFoundException, UnexpectedResponseTypeException, IOException {
-        MessageDigest md = null;
         int msgSize;
         long msgNo = 0;
 
@@ -30,8 +29,8 @@ public class OneQueueProducerClient extends SingleQueueClient {
             msgSize = Integer.parseInt(this.args[2]);
         } catch (NumberFormatException|IndexOutOfBoundsException e) {
             msgSize = DEFAULT_MESSAGE_SIZE;
-            logger.error(e.getMessage());
-            logger.warn("Falling back to default duration.");
+            logger.error(e);
+            logger.warn("Falling back to default message size.");
         }
 
         // when sending messages, receiving any kind of remote exception is considered to be irrecoverable.
@@ -49,7 +48,8 @@ public class OneQueueProducerClient extends SingleQueueClient {
             try {
                 final String hexDigest = bytesToHex(md.digest());
                 sendMessage(queueId, clientId, 0, STOP_STRING + hexDigest);
-                logger.trace("sending succeeded, client state: " + hexDigest);
+                logger.trace(String.format("Sending succeeded: %d messages produced. client state: %s",
+                        msgNo, hexDigest));
             } catch (RemoteException e) {
                 logger.error("Remote Exception: " + e.getException().getMessage());
             }

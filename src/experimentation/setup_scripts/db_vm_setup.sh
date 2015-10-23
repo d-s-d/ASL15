@@ -1,21 +1,11 @@
 #!/bin/sh -e
 
-DBNAME=$1
-DBUSER=$2
-DBPASS=$3
-PG_VERSION=9.3
-PG_ETC=/etc/postgresql/$PG_VERSION/main/
-
-echo "`date`: ecuted with arguments $DBNAME $DBUSER $DBPASS" >> db_setup.log
-export DEBIAN_FRONTEND=noninteractive
+. ./db_config.sh
 
 # Setup PostgreSQL
 sudo apt-get -qq update
 sudo apt-get -qq -y upgrade
 sudo apt-get -qq -y install "postgresql-$PG_VERSION" "postgresql-contrib-$PG_VERSION"
-
-PG_CONF="$PG_ETC/postgresql.conf"
-PG_HBA="$PG_ETC/pg_hba.conf"
 
 # Edit postgresql.conf to change listen address to '*'.
 sudo sh -c "sed -i \"s/#listen_addresses = 'localhost'/listen_addresses = '*'/\" \"$PG_CONF\""
@@ -27,16 +17,4 @@ sudo sh -c "echo \"host    all             all             all       md5\" >> \"
 # restart pgsql
 sudo service postgresql restart
 
-cat << EOF | sudo -u postgres psql
--- drop database
-DROP DATABASE IF EXISTS $DBNAME;
--- drop user
-DROP USER IF EXISTS $DBUSER;
--- register db user
-CREATE USER $DBUSER WITH PASSWORD '$DBPASS';
--- create database
-CREATE DATABASE $DBNAME WITH OWNER $DBUSER;
-EOF
-
-# load schema
-sudo -u postgres psql -f schema.sql
+. ./reset_db.sh

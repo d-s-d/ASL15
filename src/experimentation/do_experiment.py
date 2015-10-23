@@ -3,6 +3,7 @@ import argparse
 import os
 import hashlib
 import time
+from re import compile
 from datetime import datetime
 from Queue import Queue
 
@@ -13,6 +14,8 @@ from remote_task import RemoteTask, AlreadyScheduledException
 from config import config
 
 import experiments_local
+
+executed_phases = set()
 
 def phase(title=""):
     print("\n############ PHASE: {0} ############".format(title))
@@ -34,64 +37,127 @@ def execute_at_once(tasks):
         for t in l:
             t.join()
 
-if __name__=="__main__":
+def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('experiment_name', type=str, help='name of the experiment')
+    argparser.add_argument('-x', '--exclude-phases', type=str,
+        help='comma separated list of phases to exclude')
+    argparser.add_argument('-s', '--select', type=int,
+        help=
+"""if this option is provided, the experiment name is treated as a regular expression
+and the n'th experiment matching the regular expression is chosen for execution.""")
+
     args = argparser.parse_args()
+    
+    if args.exclude_phases:
+        excluded_phases = args.exclude_phases.split(',')
+    else:
+        excluded_phases = list()
 
-    m = hashlib.md5()
-    m.update(os.urandom(16))
+    if args.select is not None:
+        r = compile(args.experiment_name)
+        xs = filter(lambda n: r.match(n) is not None, experiments.keys())
+        x_name = xs[args.select]
+    else:
+        x_name = args.experiment_name
+   
+    print("Running experiment {0}".format(x_name))
 
+    try:
+        x = experiments[x_name]
+    except KeyError:
+        print("ERROR: experiment {0} not found.".format(x_name))
+        sys.exit(1)
+    
     vmpool = VM_Pool()
-    x = experiments[args.experiment_name]
+
+    def phase_boot():
+        sys.stdout.write("Waiting for vms to start.")
+        sys.stdout.flush()
+        if not vmpool.are_all_running():
+            vmpool.start()
+        while not vmpool.are_all_running():
+            time.sleep(6)
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+        print ""
+
+    def phase_warmup():
+        for i in xrange(16):
+            time.sleep(1)
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+        print ""
+
+
+    def _assign_vm():
+        if hasattr(_assign_vm, 'executed'):
+            return
+        x.collect_command('assign_vm', vmpool)
+        _assign_vm.executed = True
+
+    def phase_setup():
+        _assign_vm()
+        execute_at_once(x.collect_command('setup'))
+
+
+    def phase_run():
+        _assign_vm()
+        subphase("RUN MIDDLEWARE")
+
+        tasks = x.collect_command('run')
+        mw_queues = dict(map(lambda t: (t, t.register_filtered_queue(
+            lambda l: 'Middleware started' in l, Queue())), tasks[1]))
+        for mw_t in tasks[1]:
+            try:
+                mw_t.execute()
+            except:
+                del mw_queues[mw_t]
+
+        for q in mw_queues.values():
+            print(q.get())
+        
+        subphase("RUN CLIENTS")
+        for client_task in tasks[2]:
+            client_task.register_pipe_event(lambda x: True, RemoteTask._print_command)
+            client_task.execute()
+
+        for client_task in tasks[2]:
+            client_task.join()
+
+        subphase("SHUTDOWN MIDDLEWARE")
+        kill_tasks = x.collect_command('terminate')
+        for kill_task in kill_tasks[1]:
+            kill_task.execute()
+
+
+    def phase_collect_logs():
+        targetdir = os.path.join("logs", 
+            x_name,
+            datetime.now().isoformat().replace(':','_'))
+        execute_at_once(x.collect_command("collect_logs", targetdir))
+
+    def phase_reset():
+        execute_at_once(x.collect_command("reset"))
+
+    def phase_stop():
+        vmpool.stop()
+
+    that_locals = locals()
+    defined_phases = map(lambda pname: that_locals[pname], filter(
+        lambda s: s.startswith('phase_'), main.__code__.co_varnames))
     
-    phase("START VMS")
+    excluded_phases = map(lambda s: 'phase_{0}'.format(s), excluded_phases)
+    run_phases = filter(lambda p: p.__name__ not in excluded_phases,
+        defined_phases)
 
-    if not vmpool.are_all_running():
-        vmpool.start()
-    while not vmpool.are_all_running():
-        time.sleep(6)
-        print("Waiting for vms to start.")
+    for phas in run_phases:
+        phase(phas.__name__)
+        phas()
 
-
-    phase("SETUP")
     
-    x.collect_command('assign_vm', vmpool)
-    execute_at_once(x.collect_command('setup'))
+if __name__=="__main__":
+    main()
 
-    phase("RUN")
-    subphase("RUN MIDDLEWARE")
-
-    tasks = x.collect_command('run')
-    mw_queues = dict(map(lambda t: (t, t.register_filtered_queue(
-        lambda l: 'Middleware started' in l, Queue())), tasks[1]))
-    for mw_t in tasks[1]:
-        try:
-            mw_t.execute()
-        except:
-            del mw_queues[mw_t]
-
-    for q in mw_queues.values():
-        print(q.get())
-    
-    subphase("RUN CLIENTS")
-    for client_task in tasks[2]:
-        client_task.register_pipe_event(lambda x: True, RemoteTask._print_command)
-        client_task.execute()
-
-    for client_task in tasks[2]:
-        client_task.join()
-
-    subphase("SHUTDOWN MIDDLEWARE")
-    kill_tasks = x.collect_command('terminate')
-    for kill_task in kill_tasks[1]:
-        kill_task.execute()
-
-    phase("COLLECT LOGS")
-    targetdir = os.path.join("logs", 
-        args.experiment_name,
-        datetime.now().isoformat().replace(':','_'))
-    execute_at_once(x.collect_command("collect_logs", targetdir))
-
-    phase("STOP VMs")
-    #vmpool.stop()

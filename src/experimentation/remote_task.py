@@ -57,7 +57,7 @@ class RemoteTask(object):
 
         if not silence_stderr:
             def print_err(task, line):
-                print("ERR: [{0}] {1}".format(task.__repr__(), line))
+                print("ERR: [{0}] {1}".format(task.__repr__(), line)),
             self.pipe_event_handlers['stderr'].append((lambda x: True, print_err))
 
     def register_filtered_queue(self, filt, q, pipe='stdout'):
