@@ -22,6 +22,7 @@ public abstract class DBCommand implements Command {
             Connection conn = pooledConnection.getConnection();
             PreparedStatement ps = conn.prepareStatement(getSQLStatement());
             prepareStatement(ps);
+            requestContext.pushDelta(); // SPLIT TIME 1: after prepare
             ResultSet rs = null;
             while(rs == null) {
                 try {
@@ -31,6 +32,7 @@ public abstract class DBCommand implements Command {
                         throw sqlE;
                 }
             }
+            requestContext.pushDelta(); // SPLIT TIME 2: after query
             if(rs.next()) {
                 return this.executeDBCommand(requestContext, rs);
             } else

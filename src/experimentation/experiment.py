@@ -17,8 +17,13 @@ def get_script_path(script_name):
 
 def setup_jre_task(hostname):
     t = RemoteTask('setup jre and jar', hostname=hostname, once=True)
-    t.copy_file(config['LOCAL_JAR_FILE'])
     t.run_sh_script(get_script_path(config['JRE_SETUP_SCRIPT']))
+    return t
+
+
+def deploy_task(hostname):
+    t = RemoteTask('deploy', hostname=hostname, once=True)
+    t.copy_file(config['LOCAL_JAR_FILE'])
     return t
 
 
@@ -58,7 +63,8 @@ class ExperimentNode(object):
         child.parent = self
 
     def assign_vm(self, vm_pool):
-        self.instance = vm_pool.get_vm(self.__class__.VM_TYPE)
+        self.instance = vm_pool.get_vm(self.__class__.VM_TYPE,
+            self.siblingno)
 
     def __repr__(self):
         return "{cls}:{host}:{name} ({cs})".format(cls=self.__class__.__name__,
@@ -80,6 +86,9 @@ class ClientNode(ExperimentNode):
         t.command(config['JAVA_CLIENT_COMMAND'],
             [self.client_type, self.name, self.parent._hostname(), config['MWPORT']] + list(self.args))
         return t
+
+    def deploy(self):
+        return deploy_task(self._hostname())
 
     def collect_logs(self, target_dir):
         host_target_dir = os.path.join(target_dir, self._hostname())
@@ -130,16 +139,25 @@ class MiddlewareNode(ExperimentNode):
             [self.name, self.parent._hostname(), config['DBNAME'],
             config['DBUSER'], config['DBPASS'], config['MWPORT']])
         return t
-   
+
+    def deploy(self):
+        return deploy_task(self._hostname())
+
     def terminate(self):
         t = RemoteTask('stop middleware', self._hostname(), once=True)
         t.command('killall java')
         return t
 
     def collect_logs(self, target_dir):
+        host_target_dir = os.path.join(target_dir, self._hostname())
+        try:
+            os.makedirs(host_target_dir)
+        except OSError as e:
+            if e.errno != 17:
+                print e
         t = RemoteTask('collect middleware log', self._hostname(), once=True)
         t.command('gzip', [config['MW_LOG_REGEX']])
-        t.download_file(config['MW_LOG_REGEX']+'.gz', target_dir)
+        t.download_file(config['MW_LOG_REGEX']+'.gz', host_target_dir)
         return t
 
     def cleanup(self):
@@ -148,7 +166,7 @@ class MiddlewareNode(ExperimentNode):
         return t
 
     def reset(self):
-        self.cleanup()
+        return self.cleanup()
 
 class DatabaseNode(ExperimentNode):
     VM_TYPE='database'
@@ -174,7 +192,7 @@ def process_arg(arg, tags):
     if isinstance(arg, types.LambdaType) or isinstance(arg, types.FunctionType):
         return str(arg(tags))
     else:
-        return arg.format(**tags)
+        return str(arg).format(**tags)
 
 
 class ExperimentInserter(object):
@@ -225,6 +243,8 @@ def node(cls, nodeargs, *args):
             arg_offset += 1
 
         new_child = cls(*_args, **_kwargs)
+        new_child.siblingno = siblingno
+        new_child.childno = childno
         parent.add_child(new_child) 
         max_siblings[level] += 1
 

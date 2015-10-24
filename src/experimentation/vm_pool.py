@@ -29,8 +29,13 @@ class VM_Pool(object):
 
 
     def get_vm(self, vm_type, idx=0):
-        self.assign_groups()
-        return self.hosts[vm_type][idx % len(self.hosts[vm_type])]
+        if not hasattr(self, 'assigned_groups'):
+            self.assign_groups()
+            self.assigned_groups = True
+        host = self.hosts[vm_type][idx % len(self.hosts[vm_type])]
+        print('get_vm:', vm_type, idx)
+        print('assigning instance:', host.public_dns_name)
+        return host
 
     def start(self):
         for inst in self._instances():

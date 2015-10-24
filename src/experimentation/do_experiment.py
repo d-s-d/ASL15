@@ -24,13 +24,14 @@ def phase(title=""):
 def subphase(title=""):
     print("\n# {0}".format(title))
 
-def execute_at_once(tasks):
+def execute_at_once(tasks, delay=0.5):
     for l in tasks:
         for t in l:
             subphase("SCHEDULING TASK {0}".format(t.__repr__()))
             t.register_pipe_event(pipe='stdout')
             try:
                 t.execute()
+                time.sleep(delay)
             except AlreadyScheduledException:
                 pass
     for l in tasks:
@@ -42,13 +43,20 @@ def main():
     argparser.add_argument('experiment_name', type=str, help='name of the experiment')
     argparser.add_argument('-x', '--exclude-phases', type=str,
         help='comma separated list of phases to exclude')
+    argparser.add_argument('-i', '--include-phases', type=str,
+        help='comma separated list of phases to exclude')
     argparser.add_argument('-s', '--select', type=int,
         help=
 """if this option is provided, the experiment name is treated as a regular expression
 and the n'th experiment matching the regular expression is chosen for execution.""")
 
     args = argparser.parse_args()
-    
+   
+    if args.include_phases:
+        included_phases = args.include_phases.split(',')
+    else:
+        included_phases = list()
+
     if args.exclude_phases:
         excluded_phases = args.exclude_phases.split(',')
     else:
@@ -99,12 +107,12 @@ and the n'th experiment matching the regular expression is chosen for execution.
         _assign_vm.executed = True
 
     def phase_setup():
-        _assign_vm()
         execute_at_once(x.collect_command('setup'))
 
+    def phase_deploy():
+        execute_at_once(x.collect_command('deploy'))
 
     def phase_run():
-        _assign_vm()
         subphase("RUN MIDDLEWARE")
 
         tasks = x.collect_command('run')
@@ -146,14 +154,19 @@ and the n'th experiment matching the regular expression is chosen for execution.
         vmpool.stop()
 
     that_locals = locals()
-    defined_phases = map(lambda pname: that_locals[pname], filter(
-        lambda s: s.startswith('phase_'), main.__code__.co_varnames))
-    
-    excluded_phases = map(lambda s: 'phase_{0}'.format(s), excluded_phases)
-    run_phases = filter(lambda p: p.__name__ not in excluded_phases,
-        defined_phases)
+
+    available_phases = map(lambda pname: that_locals[pname],
+        filter(lambda s: s.startswith('phase_'), main.__code__.co_varnames))
+    if len(included_phases) > 0:
+        inc_run_phases = filter(lambda p: p.__name__[len('phase_'):] in included_phases,
+            available_phases)
+    else:
+        inc_run_phases = available_phases
+    run_phases = filter(lambda p: p.__name__[len('phase_'):] not in excluded_phases,
+        inc_run_phases)
 
     for phas in run_phases:
+        _assign_vm()
         phase(phas.__name__)
         phas()
 

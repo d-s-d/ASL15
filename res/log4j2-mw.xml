@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+
+        <RollingFile name="RollingTraceFile" fileName="/tmp/ASLMW-trace.log"
+                     filePattern="/tmp/ASLMW-trace-%i.log">
+            <PatternLayout>
+                <Pattern>%r:%msg%n</Pattern>
+                <!-- <Pattern>%d{HH:mm:ss.SSS}%-5level-%msg%n</Pattern> -->
+            </PatternLayout>
+            <Policies>
+                <OnStartupTriggeringPolicy />
+            </Policies>
+            <ThresholdFilter level="DEBUG" onMatch="DENY" onMismatch="ACCEPT" />
+        </RollingFile>
+
+
+
+        <File name="ErrorFile" fileName="/tmp/ASLMW-errors.log">
+            <PatternLayout pattern="%r: %d{HH:mm:ss.SSS} [%t] %-5level %logger{1} - %msg%n" />
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY" />
+        </File>
+
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{1} - %msg%n"/>
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="trace">
+            <AppenderRef ref="RollingTraceFile" />
+            <AppenderRef ref="ErrorFile" />
+            <AppenderRef ref="Console" />
+        </Root>
+    </Loggers>
+</Configuration>

@@ -10,11 +10,15 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import ch.ethz.inf.stefand.protocol.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Created by dsd on 9/30/15.
  */
 public class ClientDispatcher {
+    private static final Logger logger = LogManager.getLogger(ClientDispatcher.class);
+
     protected int portNumber;
     protected ExecutorService threadPool;
     protected ConnectionPool connectionPool;
@@ -35,11 +39,11 @@ public class ClientDispatcher {
                     RequestContext reqContext = new RequestContext(client, connectionPool);
                     threadPool.submit(reqContext);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error(e);
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
     }
 }

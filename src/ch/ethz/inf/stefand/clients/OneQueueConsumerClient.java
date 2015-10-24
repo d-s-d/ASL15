@@ -44,8 +44,8 @@ public class OneQueueConsumerClient extends SingleQueueClient {
                         msgCount, hexDigest));
             } else {
                 logger.warn(String.format("Message trace incomplete for client %s and queue %s. %d messages consumed."+
-                        "producer client state %s, local state %s",
-                        hexDigest, bytesToHex(md.digest()), name, queueName, msgCount));
+                        "producer client state %s, local state %s", name, queueName, msgCount,
+                        hexDigest, bytesToHex(md.digest())));
             }
         }
     }

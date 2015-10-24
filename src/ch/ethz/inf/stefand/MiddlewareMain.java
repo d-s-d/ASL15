@@ -1,12 +1,28 @@
 package ch.ethz.inf.stefand;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.concurrent.Executors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
 
 public class MiddlewareMain {
-    private static final Logger logger = LogManager.getLogger(MiddlewareMain.class);
+    private static final Logger logger;
+
+    static {
+        try {
+            URI uri = ClientMain.class.getClassLoader().getResource("log4j2-mw.xml").toURI();
+            LoggerContext context = (LoggerContext) LogManager.getContext(false);
+            context.setConfigLocation(uri);
+            //context.reconfigure();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+        logger = LogManager.getLogger(MiddlewareMain.class);
+    }
 
     public static void main(String[] args) {
         if(args.length > 0) {
@@ -30,7 +46,7 @@ public class MiddlewareMain {
                 System.out.printf("Middleware started: %s.\n", mwname);
                 clientDispatcher.run();
             } catch (SQLException e) {
-                e.printStackTrace();
+                logger.error(e);
             }
         } else {
             System.err.println("required arguments: <name> <dbhost> <dbname> <dbuser> <dbpass> <listenPort> [<poolSize>]");
