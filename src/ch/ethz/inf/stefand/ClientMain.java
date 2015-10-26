@@ -38,7 +38,7 @@ public class ClientMain {
                     context.setConfigLocation(uri);
                     //context.reconfigure();
                     logger = LogManager.getLogger(ClientMain.class);
-                    
+
                     int msport = Integer.parseInt(args[3]);
                     AbstractClient clientInstance =
                             (AbstractClient) Class.forName(CLASS_NAME_PREFIX+clienttype).newInstance();

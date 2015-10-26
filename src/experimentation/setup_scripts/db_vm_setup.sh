@@ -18,3 +18,5 @@ sudo sh -c "echo \"host    all             all             all       md5\" >> \"
 sudo service postgresql restart
 
 . ./reset_db.sh
+
+sudo /sbin/sysctl -w net.ipv4.tcp_tw_reuse=1

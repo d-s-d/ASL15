@@ -52,7 +52,7 @@ public class OneQueueProducerClient extends SingleQueueClient {
                 }
             }
         } catch (RemoteException e) {
-            logger.error("Remote Exception: " + e.getException().getMessage());
+            logger.error("Remote Exception: ", e.getException());
         } finally {
             try {
                 final String hexDigest = bytesToHex(md.digest());

@@ -24,3 +24,5 @@ if ! [ -e $JDBC_PSQL_JAR ]; then
 fi
 
 cd 
+
+sudo /sbin/sysctl -w net.ipv4.tcp_tw_reuse=1
