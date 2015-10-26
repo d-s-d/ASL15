@@ -54,7 +54,6 @@ Session.vim
 *~
 
 # Project specific
-*.jar
 bin/*
 
 # Python
