@@ -17,6 +17,10 @@ import experiments_local
 
 executed_phases = set()
 
+def remote_phase(f):
+    f.is_remote_phase = True
+    return f
+
 def phase(title=""):
     print("\n############ PHASE: {0} ############".format(title))
 
@@ -49,7 +53,7 @@ def main():
         help=
 """if this option is provided, the experiment name is treated as a regular expression
 and the n'th experiment matching the regular expression is chosen for execution.""")
-
+    
     args = argparser.parse_args()
    
     if args.include_phases:
@@ -62,9 +66,14 @@ and the n'th experiment matching the regular expression is chosen for execution.
     else:
         excluded_phases = list()
 
+    if args.experiment_name == 'list':
+        for exp_name in sorted(experiments.keys()):
+            print(exp_name)
+        sys.exit(0)
+
     if args.select is not None:
         r = compile(args.experiment_name)
-        xs = filter(lambda n: r.match(n) is not None, experiments.keys())
+        xs = filter(lambda n: r.match(n) is not None, sorted(experiments.keys()))
         x_name = xs[args.select]
     else:
         x_name = args.experiment_name
@@ -78,6 +87,12 @@ and the n'th experiment matching the regular expression is chosen for execution.
         sys.exit(1)
     
     vmpool = VM_Pool()
+
+    def _assign_vm():
+        if hasattr(_assign_vm, 'executed'):
+            return
+        x.collect_command('assign_vm', vmpool)
+        _assign_vm.executed = True
 
     def phase_boot():
         sys.stdout.write("Waiting for vms to start.")
@@ -99,19 +114,15 @@ and the n'th experiment matching the regular expression is chosen for execution.
 
         print ""
 
-
-    def _assign_vm():
-        if hasattr(_assign_vm, 'executed'):
-            return
-        x.collect_command('assign_vm', vmpool)
-        _assign_vm.executed = True
-
+    @remote_phase
     def phase_setup():
         execute_at_once(x.collect_command('setup'))
 
+    @remote_phase
     def phase_deploy():
         execute_at_once(x.collect_command('deploy'))
 
+    @remote_phase
     def phase_run():
         subphase("RUN MIDDLEWARE")
 
@@ -141,12 +152,14 @@ and the n'th experiment matching the regular expression is chosen for execution.
             kill_task.execute()
 
 
+    @remote_phase
     def phase_collect_logs():
         targetdir = os.path.join("logs", 
             x_name,
             datetime.now().isoformat().replace(':','_'))
         execute_at_once(x.collect_command("collect_logs", targetdir))
 
+    @remote_phase
     def phase_reset():
         execute_at_once(x.collect_command("reset"))
 
@@ -166,8 +179,9 @@ and the n'th experiment matching the regular expression is chosen for execution.
         inc_run_phases)
 
     for phas in run_phases:
-        _assign_vm()
         phase(phas.__name__)
+        if hasattr(phas, 'is_remote_phase'):
+            _assign_vm()
         phas()
 
     

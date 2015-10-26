@@ -83,12 +83,16 @@ class ClientNode(ExperimentNode):
 
     def run(self):
         t = RemoteTask('run client', self._hostname())
+        t.run_sh_script(get_script_path(config['CLIENT_LOG_CONFIG_SCRIPT']),
+            [self.name])
         t.command(config['JAVA_CLIENT_COMMAND'],
             [self.client_type, self.name, self.parent._hostname(), config['MWPORT']] + list(self.args))
         return t
 
     def deploy(self):
-        return deploy_task(self._hostname())
+        t = deploy_task(self._hostname())
+        t.copy_file(config['CLIENT_LOG4J2_XML'])
+        return t
 
     def collect_logs(self, target_dir):
         host_target_dir = os.path.join(target_dir, self._hostname())
@@ -105,6 +109,7 @@ class ClientNode(ExperimentNode):
     def cleanup(self):
         t = RemoteTask('cleanup client', self._hostname(), once=True)
         t.command('rm -rf', ['{0}*'.format(config['CLIENT_LOG_REGEX'])])
+        t.command('rm -rf', ['log4j2*.xml'])
         return t
 
     def reset(self):

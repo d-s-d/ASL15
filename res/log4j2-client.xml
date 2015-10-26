@@ -2,21 +2,15 @@
 <Configuration status="WARN">
     <Appenders>
 
-        <RollingFile name="RollingTraceFile" fileName="/tmp/ASLClient-trace.log"
-                     filePattern="/tmp/ASLClient-trace-%i.log">
+        <File name="TraceFile" fileName="/tmp/ASLClient-%clientname-trace.log">
             <PatternLayout>
                 <Pattern>%r:%msg%n</Pattern>
                 <!-- <Pattern>%d{HH:mm:ss.SSS}%-5level-%msg%n</Pattern> -->
             </PatternLayout>
-            <Policies>
-                <OnStartupTriggeringPolicy />
-            </Policies>
             <ThresholdFilter level="DEBUG" onMatch="DENY" onMismatch="ACCEPT" />
-        </RollingFile>
+        </File>
 
-
-
-        <File name="ErrorFile" fileName="/tmp/ASLClient-errors.log">
+        <File name="ErrorFile" fileName="/tmp/ASLClient-%clientname-errors.log">
             <PatternLayout pattern="%r: %d{HH:mm:ss.SSS} [%t] %-5level %logger{1} - %msg%n" />
             <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY" />
         </File>
@@ -28,7 +22,7 @@
     </Appenders>
     <Loggers>
         <Root level="trace">
-            <AppenderRef ref="RollingTraceFile" />
+            <AppenderRef ref="TraceFile" />
             <AppenderRef ref="ErrorFile" />
             <AppenderRef ref="Console" />
         </Root>

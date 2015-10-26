@@ -37,10 +37,19 @@ public class OneQueueProducerClient extends SingleQueueClient {
         try {
             final String fmtString = String.format("%%0%dx", msgSize);
             while(System.currentTimeMillis() < stopTime) {
-                final String msgCountString = String.format(fmtString, msgNo);
-                sendMessage(queueId, this.clientId, 0, msgCountString);
-                md.update(msgCountString.getBytes("UTF-8"));
-                msgNo++;
+                try {
+                    final String msgCountString = String.format(fmtString, msgNo);
+                    sendMessage(queueId, this.clientId, 0, msgCountString);
+                    md.update(msgCountString.getBytes("UTF-8"));
+                    msgNo++;
+                } catch(IOException ioE) {
+                    logger.error("Producer: IOException, backing off for 1sec.", ioE);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         } catch (RemoteException e) {
             logger.error("Remote Exception: " + e.getException().getMessage());
@@ -48,10 +57,11 @@ public class OneQueueProducerClient extends SingleQueueClient {
             try {
                 final String hexDigest = bytesToHex(md.digest());
                 sendMessage(queueId, clientId, 0, STOP_STRING + hexDigest);
-                logger.trace(String.format("Sending succeeded: %d messages produced. client state: %s",
-                        msgNo, hexDigest));
+                logger.trace(String.format(
+                        "Sending succeeded for client %s and queue %s: %d messages produced. client state: %s",
+                        name, queueName, msgNo, hexDigest));
             } catch (RemoteException e) {
-                logger.error("Remote Exception: " + e.getException().getMessage());
+                logger.error("Remote Exception: ", e.getException());
             }
         }
         //shutdown(); // shut down deletes all messages!

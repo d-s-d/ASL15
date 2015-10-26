@@ -25,3 +25,7 @@ config['JAVA_MW_COMMAND'] = 'java -cp "' + config['JAVA_CP'] + ':." ch.ethz.inf.
 
 config['CLIENT_LOG_REGEX'] = '/tmp/ASLClient*.log'
 config['MW_LOG_REGEX'] = '/tmp/ASLMW*.log'
+
+config['CLIENT_LOG4J2_XML'] = '../../res/log4j2-client.xml'
+config['CLIENT_LOG_CONFIG_SCRIPT'] = 'client_config_log.sh'
+
