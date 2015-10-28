@@ -1,6 +1,8 @@
 package ch.ethz.inf.stefand.protocol;
 
 import ch.ethz.inf.stefand.ConnectionPool;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,6 +16,8 @@ public abstract class DBCommand implements Command {
     protected abstract Object executeDBCommand(RequestContext requestContext, ResultSet rs) throws SQLException;
     protected abstract String getSQLStatement();
     protected abstract void prepareStatement(PreparedStatement stmt) throws SQLException;
+
+    private static Logger logger = LogManager.getLogger(DBCommand.class);
 
     public Object execute(RequestContext requestContext) throws Exception {
         ConnectionPool.PooledConnection pooledConnection = null;
@@ -30,6 +34,7 @@ public abstract class DBCommand implements Command {
                 } catch (SQLException sqlE) {
                     if (!sqlE.getMessage().contains("could not serialize"))
                         throw sqlE;
+                    logger.trace("serialization error");
                 }
             }
             requestContext.pushDelta(); // SPLIT TIME 2: after query

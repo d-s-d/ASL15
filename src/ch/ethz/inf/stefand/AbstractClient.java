@@ -25,7 +25,8 @@ public abstract class AbstractClient {
         this.middlewareHostname = middlewareHostname;
         this.middlewarePortNumber = middlewarePortNumber;
         this.args = args;
-        logger.trace(System.currentTimeMillis());
+        logger.trace(String.format("%d: Started client %s, %s", System.currentTimeMillis(),
+                name, middlewareHostname));
     }
 
     public abstract void start()

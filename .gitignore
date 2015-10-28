@@ -63,7 +63,9 @@ bin/*
 *.tmp
 
 #
+ASL15.jar
 *_local.py
 notes.txt
 
 src/experimentation/logs
+logs/
