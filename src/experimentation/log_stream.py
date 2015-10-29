@@ -3,15 +3,11 @@ import re
 import gzip
 import heapq
 
-REG_INIT_STAMP = re.compile("^([0-9]+):([0-9]+)\n")
+REG_INIT_STAMP = re.compile("^([0-9]+):([0-9]+): .+\n")
 REG_OP_STAMP = re.compile("^([0-9]+):([a-zA-Z][a-zA-Z0-9]+): ([0-9]+)\n")
 
-REG_TRACE = {
-    'client': '^ASLClient.+.gz',
-    'middleware': '^ASLMW.+.gz'
-}
 
-def log_data(target_dir, regex=REG_CLIENT_TRACE_FILE):
+def log_data(target_dir, regex):
         # walk down target_dir looking for matching files
         # initialize heap
         #
@@ -33,15 +29,18 @@ def log_data(target_dir, regex=REG_CLIENT_TRACE_FILE):
         for (cwd, dnames, fnames) in os.walk(target_dir):
             for fn in filter(reg.match, fnames):
                 f = gzip.open(os.path.join(cwd, fn))
-                filenames[f] = fn
                 line = f.readline()
                 m = REG_INIT_STAMP.match(line)
+                real_offset = 0
                 while m:
                     real_offset = int(m.group(2)) - int(m.group(1))
                     line = f.readline()
                     m = REG_INIT_STAMP.match(line)
-                f.seek(-len(line), os.SEEK_CUR)
-                offsets[f] = real_offset
+                line_len = len(line)
+                if line_len > 0:
+                    f.seek(-line_len, os.SEEK_CUR)
+                    filenames[f] = fn
+                    offsets[f] = real_offset
 
 
         heap = filter(lambda x: x[0] is not None,

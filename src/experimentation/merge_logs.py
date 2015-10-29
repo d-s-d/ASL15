@@ -5,7 +5,7 @@ import log_stream
 from datetime import date, time, datetime, timedelta
 
 REG_TRACE = {
-    'client': '^ASLClient.+.gz',
+    'client': '^ASLClient.+trace.+\.gz$',
     'middleware': '^ASLMW.+.gz'
 }
 

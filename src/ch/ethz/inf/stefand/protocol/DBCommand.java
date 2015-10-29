@@ -13,6 +13,8 @@ import java.sql.SQLException;
  * Created by dsd on 10/5/15.
  */
 public abstract class DBCommand implements Command {
+    public static final long MAX_SLEEP_TIME = 256; // ms
+
     protected abstract Object executeDBCommand(RequestContext requestContext, ResultSet rs) throws SQLException;
     protected abstract String getSQLStatement();
     protected abstract void prepareStatement(PreparedStatement stmt) throws SQLException;
@@ -28,6 +30,7 @@ public abstract class DBCommand implements Command {
             prepareStatement(ps);
             requestContext.pushDelta(); // SPLIT TIME 1: after prepare
             ResultSet rs = null;
+            long sleepTime = 2;
             while(rs == null) {
                 try {
                     rs = ps.executeQuery();
@@ -35,6 +38,9 @@ public abstract class DBCommand implements Command {
                     if (!sqlE.getMessage().contains("could not serialize"))
                         throw sqlE;
                     logger.trace("serialization error");
+                    Thread.sleep(sleepTime);
+                    if(sleepTime < MAX_SLEEP_TIME)
+                        sleepTime *= 2;
                 }
             }
             requestContext.pushDelta(); // SPLIT TIME 2: after query
