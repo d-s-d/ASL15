@@ -178,6 +178,7 @@ class DatabaseNode(ExperimentNode):
     def setup(self):
         t = RemoteTask('setup postgres', hostname=self._hostname(), once=True)
         t.copy_file('../sql/schema.sql')
+        t.copy_file('setup_scripts/postgresql.conf')
         t.copy_file('setup_scripts/db_config.sh')
         t.copy_file('setup_scripts/reset_db.sh')
         t.run_sh_script(get_script_path(config['DB_SETUP_SCRIPT']),
