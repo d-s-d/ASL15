@@ -10,7 +10,7 @@ from Queue import Queue
 from experiment import experiments
 from vm_pool import VM_Pool
 
-from remote_task import RemoteTask, AlreadyScheduledException
+from remote_task import RemoteTask, AlreadyScheduledException, reset_scheduled_tasks
 from config import config
 
 import experiments_local
@@ -28,6 +28,10 @@ def phase(title=""):
 def subphase(title=""):
     print("\n# {0}".format(title))
 
+
+def print_experiment(x_id):
+    print(" {0}: {1} {2}".format(x_id, *experiments[x_id][:2]))
+
 def execute_at_once(tasks, delay=0.5):
     for l in tasks:
         for t in l:
@@ -44,15 +48,15 @@ def execute_at_once(tasks, delay=0.5):
 
 def main():
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('experiment_name', type=str, help='name of the experiment')
+    argparser.add_argument('experiments', type=str,
+        help=
+"""comma separated list of numbers of experiments to run. For example,
+1-3  : run experiment 1,2, and 3
+1,5-7: run experiments 1,5,6, and 7.""")
     argparser.add_argument('-x', '--exclude-phases', type=str,
         help='comma separated list of phases to exclude')
     argparser.add_argument('-i', '--include-phases', type=str,
         help='comma separated list of phases to exclude')
-    argparser.add_argument('-s', '--select', type=int,
-        help=
-"""if this option is provided, the experiment name is treated as a regular expression
-and the n'th experiment matching the regular expression is chosen for execution.""")
     
     args = argparser.parse_args()
    
@@ -66,32 +70,39 @@ and the n'th experiment matching the regular expression is chosen for execution.
     else:
         excluded_phases = list()
 
-    if args.experiment_name == 'list':
-        for exp_name in sorted(experiments.keys()):
-            print(exp_name)
+    if args.experiments == 'list':
+        for x_id in xrange(len(experiments)):
+            print_experiment(x_id)
         sys.exit(0)
 
-    if args.select is not None:
-        r = compile(args.experiment_name)
-        xs = filter(lambda n: r.match(n) is not None, sorted(experiments.keys()))
-        x_name = xs[args.select]
-    else:
-        x_name = args.experiment_name
-   
-    print("Running experiment {0}".format(x_name))
+    x_idcs = set()
+    for exp_arg in args.experiments.split(','):
+        r = map(lambda s: int(s), exp_arg.split('-'))
+        x_idcs.update( range(r[0], r[len(r)-1]+1) )
 
+    x_idcs = sorted(list(x_idcs))
+  
+    xname = ''
+    xparams = {}
+    x = None
+
+    print("Running experiments: ")
     try:
-        x = experiments[x_name]
-    except KeyError:
-        print("ERROR: experiment {0} not found.".format(x_name))
+        for x_id in x_idcs:
+            print(" {0}: {1} {2}".format(x_id, *experiments[x_id][:2]))
+    except IndexError as e:
+        print(e)
         sys.exit(1)
-    
+   
+    #xs = [x[x_id][2] for x_id in x_list]
+
     vmpool = VM_Pool()
 
-    def _assign_vm():
-        if hasattr(_assign_vm, 'executed'):
+    def _assign_vm(x):
+        if hasattr(_assign_vm, 'executed') and _assign_vm.executed:
             return
         x.collect_command('assign_vm', vmpool)
+        print x
         _assign_vm.executed = True
 
     def phase_boot():
@@ -150,13 +161,20 @@ and the n'th experiment matching the regular expression is chosen for execution.
         kill_tasks = x.collect_command('terminate')
         for kill_task in kill_tasks[1]:
             kill_task.execute()
+            kill_task.join()
 
 
     @remote_phase
     def phase_collect_logs():
         targetdir = os.path.join("logs", 
-            x_name,
-            datetime.now().isoformat().replace(':','_'))
+            '{0}__{1}'.format(xname,
+                datetime.now().isoformat().replace(':','_')))
+        os.makedirs(targetdir)
+        if xparams is not None:
+            fparams = open(os.path.join(targetdir, 'params.txt'), 'w')
+            for item in xparams.items():
+                fparams.write("{0}:{1}\n".format(*item))
+            fparams.close()
         execute_at_once(x.collect_command("collect_logs", targetdir))
 
     @remote_phase
@@ -178,11 +196,17 @@ and the n'th experiment matching the regular expression is chosen for execution.
     run_phases = filter(lambda p: p.__name__[len('phase_'):] not in excluded_phases,
         inc_run_phases)
 
-    for phas in run_phases:
-        phase(phas.__name__)
-        if hasattr(phas, 'is_remote_phase'):
-            _assign_vm()
-        phas()
+    for x_id in x_idcs:
+        _assign_vm.executed = False
+        reset_scheduled_tasks()
+        print("Current Experiment:")
+        print_experiment(x_id)
+        (xname, xparams, x) = experiments[x_id]
+        for phas in run_phases:
+            phase(phas.__name__)
+            if hasattr(phas, 'is_remote_phase'):
+                _assign_vm(x)
+            phas()
 
     
 if __name__=="__main__":

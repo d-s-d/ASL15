@@ -186,3 +186,5 @@ class RemoteTask(object):
     def __repr__(self):
         return self.repr_string
 
+def reset_scheduled_tasks():
+    scheduled_tasks.clear()

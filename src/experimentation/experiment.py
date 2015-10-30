@@ -191,86 +191,57 @@ class DatabaseNode(ExperimentNode):
             [config['DBNAME'], config['DBUSER'], config['DBPASS']])
         return t
 
-experiments = dict()
+experiments = list()
+    
+def gen_experiment(name, middleware_nodes, clients, tags=None):
+    assert not callable(middleware_nodes) or isinstance(tags, dict)
+    assert not callable(clients) or isinstance(tags, dict)
+    
+    if callable(middleware_nodes):
+        middleware_nodes = middleware_nodes(tags)
+    if callable(clients):
+        clients = clients(tags)
+
+    # create middleware and client nodes
+    mw_nodes = map(lambda args: MiddlewareNode(*args), middleware_nodes)
+    client_nodes = map(lambda args: DelayedClientNode(*args[1:], delay=args[0]),
+        clients)
+
+    # assign sibling numbers
+    for nodes in [mw_nodes, client_nodes]:
+        for node in zip(nodes, xrange(len(nodes))):
+            node[0].siblingno = node[1]
+    
+    # add clients to middlewares in round robin fashion
+    mw_count = len(mw_nodes)
+    for cli_i in xrange(len(client_nodes)):
+        mw_nodes[cli_i % mw_count].add_child(client_nodes[cli_i])
+
+    db_node = DatabaseNode('db')
+    db_node.siblingno = 0
+
+    # add all middlewares to the database node
+    for mw_node in mw_nodes:
+        db_node.add_child(mw_node)
+
+    # add the experiment
+    experiments.append((name, tags, db_node))
 
 
-def process_arg(arg, tags):
-    if isinstance(arg, types.LambdaType) or isinstance(arg, types.FunctionType):
-        return str(arg(tags))
-    else:
-        return str(arg).format(**tags)
+def new_experiment(name, middleware_nodes, clients, parameters=None):
+    assert middleware_nodes is not None
+    assert clients is not None
 
-
-class ExperimentInserter(object):
-    def __init__(self, name, tags=None):
-        self.name = name
-        if tags is None:
-            tags = {}
-        self.tags = tags
-
-    def add_child(self, child):
-        experiments[process_arg(self.name, self.tags)] = child
-        child.tags = self.tags
-
-    def get_root(self):
-        return self
-
-
-def add_experiment(x_name, structure, combinations=None):
-    if combinations is not None:
-        combis = product(*combinations.values())
+    if parameters is not None:
+        combis = product(*parameters.values())
         for combi in combis:
-            tags = dict(zip(combinations.keys(), combi))
-            structure(ExperimentInserter(x_name, tags), 0, 0, [])
+            tags = dict(zip(parameters.keys(), combi))
+            gen_experiment(name, middleware_nodes, clients, tags)
     else:
-        structure(ExperimentInserter(x_name), 0, 0, [])
+        gen_experiment(name, middleware_nodes, clients)
 
 
-def process_args(args, siblingno, childno, exptags):
-    child_tags = {'siblingno': siblingno, 'childno': childno}
-    child_tags.update(exptags)
-    return map(lambda a: process_arg(a, child_tags), args)
+def prod_cons_pair(delay, durance, queue_name):
+    return [(delay, 'p_{0}'.format(queue_name), 'OneQueueProducerClient', queue_name),
+        (delay, 'c_{0}'.format(queue_name), 'OneQueueConsumerClient', queue_name)]
 
-
-def node(cls, nodeargs, *args):
-    def node_constructor(parent, level, childno, max_siblings):
-        arg_offset = 0
-        if len(max_siblings) < level+1:
-            max_siblings.append(0)
-
-        siblingno = max_siblings[level]
-        _args = process_args(nodeargs, siblingno, childno, parent.get_root().tags)
-        _kwargs = {}
-        if len(args) > 0 and isinstance(args[0], dict):
-            nodekwargs = args[0]
-            _kwargs = dict(zip(nodekwargs.keys(),
-                process_args(nodekwargs.values(), siblingno, childno,
-                parent.get_root().tags)))
-            arg_offset += 1
-
-        new_child = cls(*_args, **_kwargs)
-        new_child.siblingno = siblingno
-        new_child.childno = childno
-        parent.add_child(new_child) 
-        max_siblings[level] += 1
-
-        if len(args) > arg_offset and isinstance(args[arg_offset], list):
-            children = args[arg_offset]
-            _childno = 0
-            for i in xrange(len(children)):
-                _childno = children[i](new_child, level+1, _childno, max_siblings)
-        return childno + 1
-
-    return node_constructor
-
-
-def xnode(reps, cls, nodeargs, *args):
-    def node_constructor(parent, level, childno, max_siblings):
-        constructor = node(cls, nodeargs, *args)
-        _reps = reps
-        if isinstance(_reps, str):
-            _reps = int(process_arg([_reps], parent.get_root().tags)) 
-        for i in xrange(_reps):
-            childno = constructor(parent, level, childno, max_siblings)
-        return childno
-    return node_constructor
