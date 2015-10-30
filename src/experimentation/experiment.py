@@ -241,7 +241,7 @@ def new_experiment(name, middleware_nodes, clients, parameters=None):
         gen_experiment(name, middleware_nodes, clients)
 
 
-def prod_cons_pair(delay, durance, queue_name):
-    return [(delay, 'p_{0}'.format(queue_name), 'OneQueueProducerClient', queue_name),
-        (delay, 'c_{0}'.format(queue_name), 'OneQueueConsumerClient', queue_name)]
+def prod_cons_pair(delay, duration, queue_name):
+    return [(delay, 'p_{0}'.format(queue_name), 'OneQueueProducerClient', queue_name, duration),
+        (delay, 'c_{0}'.format(queue_name), 'OneQueueConsumerClient', queue_name, duration)]
 
