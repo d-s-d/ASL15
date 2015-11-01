@@ -11,6 +11,8 @@ import java.security.NoSuchAlgorithmException;
 
 /**
  * Created by dsd on 10/20/15.
+ *
+ * arguments: <queueName> <duration> [subclass arguments]
  */
 public abstract class SingleQueueClient extends AbstractRegisteredClient {
     protected String queueName;
@@ -33,7 +35,6 @@ public abstract class SingleQueueClient extends AbstractRegisteredClient {
                 queueName = DEFAULT_QUEUE_NAME;
         } catch(IndexOutOfBoundsException e) {
             queueName = DEFAULT_QUEUE_NAME;
-            logger.error(e.getMessage());
             logger.warn("Falling back to default queue name.");
         }
 
@@ -42,7 +43,6 @@ public abstract class SingleQueueClient extends AbstractRegisteredClient {
             duration = Long.parseLong(this.args[1]) * 1000;
         } catch (NumberFormatException|IndexOutOfBoundsException e) {
             duration = DEFAULT_DURATION;
-            logger.error(e.getMessage());
             logger.warn("Falling back to default duration.");
         }
 

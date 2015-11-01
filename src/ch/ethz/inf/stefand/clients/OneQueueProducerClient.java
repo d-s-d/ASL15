@@ -29,7 +29,6 @@ public class OneQueueProducerClient extends SingleQueueClient {
             msgSize = Integer.parseInt(this.args[2]);
         } catch (NumberFormatException|IndexOutOfBoundsException e) {
             msgSize = DEFAULT_MESSAGE_SIZE;
-            logger.error(e);
             logger.warn("Falling back to default message size.");
         }
 

@@ -46,6 +46,10 @@ def log_data(target_dir, regex):
         heap = filter(lambda x: x[0] is not None,
             map(lambda f: (read_op_entry(f), f), filenames.keys()))
         heapq.heapify(heap)
+        
+        oldest_item = heapq.heappop(heap)
+        base_offset = oldest_item[0][0]
+        heapq.heappush(heap, oldest_item)
 
         while True:
             try:
@@ -53,6 +57,6 @@ def log_data(target_dir, regex):
                 new_entry = (read_op_entry(f), f)
                 if new_entry[0] is not None:
                     heapq.heappush(heap, new_entry)
-                yield item
+                yield tuple([item[0]-base_offset] + list(item[1:]))
             except IndexError:
                 raise StopIteration

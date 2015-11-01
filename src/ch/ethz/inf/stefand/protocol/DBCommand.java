@@ -13,7 +13,7 @@ import java.sql.SQLException;
  * Created by dsd on 10/5/15.
  */
 public abstract class DBCommand implements Command {
-    public static final long MAX_SLEEP_TIME = 256; // ms
+    public static final long MAX_SLEEP_TIME = 64; // ms
 
     protected abstract Object executeDBCommand(RequestContext requestContext, ResultSet rs) throws SQLException;
     protected abstract String getSQLStatement();
